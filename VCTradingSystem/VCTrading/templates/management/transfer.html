@@ -1,141 +1,289 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <!-- 계좌 정보 섹션 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-bold mb-4">계좌 정보</h2>
-        <div class="grid grid-cols-3 gap-4">
-            <div>
-                <p class="text-gray-600">가상 계좌번호</p>
-                <p class="font-semibold">{{ user.virtual_account_id }}</p>
-            </div>
-            <div>
-                <p class="text-gray-600">실제 계좌번호</p>
-                <p class="font-semibold">{{ user.account_id }}</p>
-            </div>
-            <div>
-                <p class="text-gray-600">가용 금액</p>
-                <p class="font-semibold">{{ user.balance|floatformat:0 }} 원</p>
-            </div>
+  <div class="grid grid-cols-12 gap-6">
+    <!-- 자산 현황 섹션 -->
+    <div class="col-span-4">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-lg font-bold mb-4">자산 현황</h2>
+        <div class="space-y-4">
+          <div>
+            <span class="text-sm text-gray-600">가상계좌</span>
+            <p class="text-base font-medium">{{ virtual_account.virtual_account_id }}</p>
+          </div>
+          <div>
+            <span class="text-sm text-gray-600">가용 자산</span>
+            <p class="text-xl font-bold balance-display">
+              {{ virtual_account.balance|floatformat:0 }} 원
+            </p>
+          </div>
         </div>
+      </div>
     </div>
 
-    <!-- 입출금 처리 섹션 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-bold mb-4">자산 입출금</h2>
-        <form id="transferForm" method="POST" action="{% url 'process_transfer' %}">
-            {% csrf_token %}
-            <div class="space-y-4">
-                <!-- 거래 유형 선택 -->
-                <div>
-                    <label class="block text-gray-700 mb-2">거래 유형</label>
-                    <div class="flex space-x-4">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="transfer_type" value="DEPOSIT" class="form-radio" checked>
-                            <span class="ml-2">입금</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="transfer_type" value="WITHDRAW" class="form-radio">
-                            <span class="ml-2">출금</span>
-                        </label>
-                    </div>
-                </div>
+    <!-- 우측: 거래 내역 -->
+    <div class="col-span-8">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- 입금/출금 버튼 -->
+        <div class="flex space-x-4 mb-6">
+          <button type="button" id="showDepositBtn" class="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600">
+            입금
+          </button>
+          <button type="button" id="showWithdrawBtn" class="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600">
+            출금
+          </button>
+        </div>
 
-                <!-- 금액 입력 -->
-                <div>
-                    <label class="block text-gray-700 mb-2">금액</label>
-                    <input type="number" name="amount" class="form-input mt-1 block w-full rounded-md border-gray-300"
-                           placeholder="금액을 입력하세요" required>
-                </div>
+        <!-- 필터링 버튼 -->
+        <div class="mb-6">
+          <div class="flex space-x-4 mb-4">
+            <button type="button" class="transaction-filter px-4 py-2 rounded-lg bg-blue-500 text-white" data-type="all">전체</button>
+            <button type="button" class="transaction-filter px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200" data-type="virtual">가상계좌</button>
+            <button type="button" class="transaction-filter px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200" data-type="crypto">가상화폐</button>
+          </div>
+        </div>
 
-                <!-- 처리 버튼 -->
-                <div class="text-right">
-                    <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">
-                        처리하기
-                    </button>
-                </div>
+        <!-- 거래 내역 -->
+        <div class="space-y-4">
+          {% for transfer in transfers %}
+          <div class="transaction-item border-b pb-4" data-type="{{ transfer.transaction_type }}">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="font-medium">
+                  {% if transfer.transfer_type == 'DEPOSIT' %}
+                    {% if transfer.transaction_type == 'CRYPTO' %}
+                      가상화폐 매도
+                    {% else %}
+                      가상계좌 입금
+                    {% endif %}
+                  {% else %}
+                    {% if transfer.transaction_type == 'CRYPTO' %}
+                      가상화폐 매수
+                    {% else %}
+                      가상계좌 출금
+                    {% endif %}
+                  {% endif %}
+                </p>
+                <p class="text-sm text-gray-600">
+                  {{ transfer.from_account }} → {{ transfer.to_account }}
+                </p>
+                <p class="text-sm text-gray-500">
+                  {{ transfer.transfer_time|date:"Y.m.d H:i" }}
+                </p>
+              </div>
+              <p class="text-lg font-bold {% if transfer.transfer_type == 'DEPOSIT' %}text-blue-600{% else %}text-red-600{% endif %}">
+                {% if transfer.transfer_type == 'DEPOSIT' %}+{% else %}-{% endif %}
+                {{ transfer.amount|floatformat:0 }} 원
+              </p>
             </div>
+          </div>
+          {% empty %}
+          <p class="text-center text-gray-500">거래 내역이 없습니다.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 입금 모달 -->
+  <div id="depositModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+    <div class="modal-container bg-white w-96 mx-auto mt-20 rounded-lg shadow-lg">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">실계좌에서 가상계좌로 입금하기</h3>
+          <button type="button" class="modal-close">×</button>
+        </div>
+        <form id="depositForm">
+          {% csrf_token %}
+          <input type="hidden" name="transfer_type" value="DEPOSIT">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">출금할 실계좌 선택</label>
+            <select name="from_account" class="w-full border rounded-md p-2">
+              <option value="{{ real_account.account_id }}">
+                {{ real_account.bank_name }} {{ real_account.account_id }}
+                (잔액: {{ real_account.balance|floatformat:0 }}원)
+              </option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">금액</label>
+            <input type="number" name="amount" class="w-full border rounded-md p-2" required
+                   max="{{ real_account.balance }}"
+                   placeholder="최대 {{ real_account.balance|floatformat:0 }}원">
+            <p class="text-sm text-gray-500 mt-1">최대 거래 한도: 1천만원</p>
+          </div>
+          <div class="flex justify-end space-x-4">
+            <button type="button" class="modal-close px-4 py-2 border rounded-md">취소</button>
+            <button type="button" id="depositBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+              입금하기
+            </button>
+          </div>
         </form>
+      </div>
     </div>
+  </div>
 
-    <!-- 입출금 내역 섹션 -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-xl font-bold mb-4">입출금 내역</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">거래 시간</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">거래 유형</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">잔액</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for transfer in transfers %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ transfer.transfer_time|date:"Y-m-d H:i" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if transfer.transfer_type == 'DEPOSIT' %}
-                            <span class="text-green-600">입금</span>
-                            {% else %}
-                            <span class="text-red-600">출금</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ transfer.amount|floatformat:0 }} 원</td>
-                        <td class="px-6 py-4 whitespace-nowrap">{{ transfer.balance|floatformat:0 }} 원</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                {% if transfer.status == 'COMPLETED' %}bg-green-100 text-green-800
-                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                                {{ transfer.status }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">입출금 내역이 없습니다.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+  <!-- 출금 모달 -->
+  <div id="withdrawModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+    <div class="modal-container bg-white w-96 mx-auto mt-20 rounded-lg shadow-lg">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">가상계좌에서 실계좌로 출금하기</h3>
+          <button type="button" class="modal-close">×</button>
         </div>
+        <form id="withdrawForm">
+          {% csrf_token %}
+          <input type="hidden" name="transfer_type" value="WITHDRAW">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">입금받을 실계좌 선택</label>
+            <select name="to_account" class="w-full border rounded-md p-2">
+              <option value="{{ real_account.account_id }}">
+                {{ real_account.bank_name }} {{ real_account.account_id }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              금액 (가용 잔액: {{ virtual_account.balance|floatformat:0 }}원)
+            </label>
+            <input type="number" name="amount" class="w-full border rounded-md p-2" required
+                   max="{{ virtual_account.balance }}"
+                   placeholder="최대 {{ virtual_account.balance|floatformat:0 }}원">
+            <p class="text-sm text-gray-500 mt-1">최대 거래 한도: 1천만원</p>
+          </div>
+          <div class="flex justify-end space-x-4">
+            <button type="button" class="modal-close px-4 py-2 border rounded-md">취소</button>
+            <button type="button" id="withdrawBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+              출금하기
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-
-    <!-- 대시보드로 돌아가기 버튼 -->
-    <div class="mt-6 text-center">
-        <a href="{% url 'dashboard' %}" class="inline-block bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
-            대시보드로 돌아가기
-        </a>
-    </div>
+  </div>
 </div>
+{% endblock %}
 
-<!-- JavaScript for form submission -->
+{% block scripts %}
 <script>
-document.getElementById('transferForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    try {
-        const response = await fetch(this.action, {
-            method: 'POST',
-            body: new FormData(this),
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+document.addEventListener('DOMContentLoaded', function() {
+
+    // 모달 제어
+    const depositModal = document.getElementById('depositModal');
+    const withdrawModal = document.getElementById('withdrawModal');
+    const showDepositBtn = document.getElementById('showDepositBtn');
+    const showWithdrawBtn = document.getElementById('showWithdrawBtn');
+    const modalCloses = document.querySelectorAll('.modal-close');
+
+    // 입금 버튼 클릭 이벤트
+    showDepositBtn.addEventListener('click', () => {
+        depositModal.classList.remove('hidden');
+    });
+
+    // 출금 버튼 클릭 이벤트
+    showWithdrawBtn.addEventListener('click', () => {
+        withdrawModal.classList.remove('hidden');
+    });
+
+    // 모달 닫기 버튼 이벤트
+    modalCloses.forEach(button => {
+        button.addEventListener('click', () => {
+            depositModal.classList.add('hidden');
+            withdrawModal.classList.add('hidden');
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('처리가 완료되었습니다.');
-            location.reload();
-        } else {
-            alert(data.message);
-        }
-    } catch (error) {
-        alert('처리 중 오류가 발생했습니다.');
+    });
+
+    // 거래내역 필터링
+    const filterButtons = document.querySelectorAll('.transaction-filter');
+    const transactionItems = document.querySelectorAll('.transaction-item');
+
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const filterType = button.dataset.type;
+            
+            filterButtons.forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white');
+                btn.classList.add('bg-gray-100');
+            });
+            
+            button.classList.remove('bg-gray-100');
+            button.classList.add('bg-blue-500', 'text-white');
+
+            transactionItems.forEach(item => {
+                if (filterType === 'all' || item.dataset.type === filterType) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    });
+
+    // 토스트 메시지 표시 함수
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+            type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' :
+            'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+        }`;
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+
+        // 3초 후 토스트 메시지 제거
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
+
+    // 폼 제출 처리
+    async function handleTransfer(formData) {
+        try {
+            const response = await fetch("{% url 'process_transfer' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                // 잔액 업데이트
+                const balanceElement = document.querySelector('.balance-display');
+                if (balanceElement) {
+                    balanceElement.textContent = `${Number(result.data.balance).toLocaleString()} 원`;
+                }
+                // 모달 닫기
+                document.getElementById('depositModal').classList.add('hidden');
+                document.getElementById('withdrawModal').classList.add('hidden');
+                
+                // 3초 후 페이지 새로고침 (거래내역 업데이트를 위해)
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                showToast(result.message, 'error');
+            }
+        } catch (error) {
+            showToast('처리 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    const depositForm = document.getElementById('depositForm');
+    const withdrawForm = document.getElementById('withdrawForm');
+    const depositBtn = document.getElementById('depositBtn');
+    const withdrawBtn = document.getElementById('withdrawBtn');
+
+    depositBtn.addEventListener('click', () => {
+        handleTransfer(new FormData(depositForm));
+    });
+
+    withdrawBtn.addEventListener('click', () => {
+        handleTransfer(new FormData(withdrawForm));
+    });
 });
 </script>
 {% endblock %}
