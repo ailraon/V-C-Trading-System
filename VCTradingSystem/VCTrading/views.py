@@ -50,8 +50,8 @@ def login_view(request):
         except Exception as e:  
             logger.error(f"Login error: {str(e)}")
             return render(request, 'auth/login.html', {'error': '로그인 처리 중 오류가 발생했습니다.'})
-    #return render(request, 'auth/login.html')
-    return render(request, 'dashboard/dashboard.html')
+    return render(request, 'auth/login.html')
+    # return render(request, 'dashboard/dashboard.html')
 
 @login_required
 def dashboard_view(request):
