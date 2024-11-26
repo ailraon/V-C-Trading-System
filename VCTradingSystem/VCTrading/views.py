@@ -53,7 +53,7 @@ def login_view(request):
     return render(request, 'auth/login.html')
     # return render(request, 'dashboard/dashboard.html')
 
-@login_required
+# @login_required
 def dashboard_view(request):
     """대시보드 뷰"""
     try:
