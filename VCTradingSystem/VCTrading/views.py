@@ -53,10 +53,6 @@ def login_view(request):
     return render(request, 'auth/login.html')
     #return render(request, 'dashboard/dashboard.html')
 
-<<<<<<< HEAD
-# @login_required
-=======
->>>>>>> b8525ea408c957c7feb34c6351590c0c717d6eb8
 def dashboard_view(request):
     """메인 대시보드 뷰"""
     try:
