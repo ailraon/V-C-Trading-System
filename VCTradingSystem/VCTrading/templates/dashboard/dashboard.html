@@ -1,126 +1,31 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-  <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">계좌 정보</h2>
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <p class="font-medium">가상 계좌번호</p>
-        <p>{{ user.virtual_account_id }}</p>
-      </div>
-      <div>
-        <p class="font-medium">실제 계좌번호</p>
-        <p>{{ user.account_id }}</p>
-      </div>
-    </div>
-  </div>
-  
-  <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">자산 입출금</h2>
-    <form method="post" action="{% url 'process_transfer' %}">
-      {% csrf_token %}
-      <div class="mb-4">
-        <label class="block text-gray-700 font-bold mb-2">거래 유형</label>
-        <div class="mt-2 space-x-4">
-          <label class="inline-flex items-center">
-            <input type="radio" name="transfer_type" value="DEPOSIT" class="form-radio h-5 w-5 text-blue-600" checked>
-            <span class="ml-2">입금</span>
-          </label>
-          <label class="inline-flex items-center">
-            <input type="radio" name="transfer_type" value="WITHDRAW" class="form-radio h-5 w-5 text-blue-600">
-            <span class="ml-2">출금</span>
-          </label>
+    <!-- 계좌 정보 -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">계좌 정보</h2>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <p>가상 계좌번호</p>
+                <p>{{ user.virtual_account_id }}</p>
+            </div>
+            <div>
+                <p>실제 계좌번호</p>
+                <p>{{ user.account_id }}</p>
+            </div>
         </div>
-      </div>
-      <div class="mb-4">
-        <label class="block text-gray-700 font-bold mb-2">금액</label>
-        <input type="number" name="amount" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-      </div>
-      <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-          처리하기
-      </button>
-    </form>
-  </div>
-
-  <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h2 class="text-xl font-bold mb-4">입출금 내역</h2>
-    <div class="overflow-x-auto">
-      <table class="table-auto w-full">
-        <thead>
-          <tr>
-            <th class="px-4 py-2">거래 시간</th>
-            <th class="px-4 py-2">거래 유형</th>
-            <th class="px-4 py-2">금액</th>
-            <th class="px-4 py-2">상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for transfer in transfers %}
-            <tr>
-              <td class="border px-4 py-2">{{ transfer.transfer_time|date:"Y-m-d H:i" }}</td>
-              <td class="border px-4 py-2">{{ transfer.transfer_type }}</td>
-              <td class="border px-4 py-2">{{ transfer.amount|floatformat:0 }} 원</td>
-              <td class="border px-4 py-2">{{ transfer.status }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-xl font-bold mb-4">매수 내역</h2>
-      <div class="overflow-x-auto">
-        <table class="table-auto w-full">
-          <thead>
-            <tr>
-              <th class="px-4 py-2">가상화폐</th>
-              <th class="px-4 py-2">수량</th>
-              <th class="px-4 py-2">매수가</th>
-              <th class="px-4 py-2">수익률</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for trans in buy_transactions %}
-              <tr>
-                <td class="border px-4 py-2">{{ trans.crypto_id }}</td>
-                <td class="border px-4 py-2">{{ trans.trade_volume|floatformat:8 }}</td>
-                <td class="border px-4 py-2">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                <td class="border px-4 py-2">{{ trans.rate_of_return|floatformat:2 }}%</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-xl font-bold mb-4">매도 내역</h2>
-      <div class="overflow-x-auto">
-        <table class="table-auto w-full">
-          <thead>
-            <tr>
-              <th class="px-4 py-2">가상화폐</th>
-              <th class="px-4 py-2">수량</th>
-              <th class="px-4 py-2">매도가</th>
-              <th class="px-4 py-2">실현손익</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for trans in sell_transactions %}
-              <tr>
-                <td class="border px-4 py-2">{{ trans.crypto_id }}</td>
-                <td class="border px-4 py-2">{{ trans.trade_volume|floatformat:8 }}</td>
-                <td class="border px-4 py-2">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                <td class="border px-4 py-2">{{ trans.rate_of_return|floatformat:2 }}%</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <!-- 관리 메뉴 버튼 -->
+    <div class="grid grid-cols-2 gap-6">
+        <a href="{% url 'investment_management' %}" 
+           class="bg-blue-500 text-white rounded-lg p-4 text-center">
+            투자내역 관리
+        </a>
+        <a href="{% url 'transfer_management' %}" 
+           class="bg-green-500 text-white rounded-lg p-4 text-center">
+            자산입출금 관리
+        </a>
     </div>
-  </div>
 </div>
 {% endblock %}

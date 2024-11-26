@@ -51,78 +51,120 @@ def login_view(request):
             logger.error(f"Login error: {str(e)}")
             return render(request, 'auth/login.html', {'error': '로그인 처리 중 오류가 발생했습니다.'})
     return render(request, 'auth/login.html')
-    # return render(request, 'dashboard/dashboard.html')
+    #return render(request, 'dashboard/dashboard.html')
 
+<<<<<<< HEAD
 # @login_required
+=======
+>>>>>>> b8525ea408c957c7feb34c6351590c0c717d6eb8
 def dashboard_view(request):
-    """대시보드 뷰"""
+    """메인 대시보드 뷰"""
     try:
         user_id = request.session.get('user_id')
         user = UserInfo.objects.get(user_id=user_id)
-
-        # 투자 내역 조회
-        buy_transactions = InvestmentHistory.objects.filter(user=user, transaction_type='BUY')
-        sell_transactions = InvestmentHistory.objects.filter(user=user, transaction_type='SELL')
-
-        # 입출금 내역 조회  
-        transfers = TransferHistory.objects.filter(user=user)
-
+        
         context = {
             'user': user,
-            'buy_transactions': buy_transactions, 
-            'sell_transactions': sell_transactions,
-            'transfers': transfers
         }
         return render(request, 'dashboard/dashboard.html', context)
-
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}")
         return redirect('login')
 
-@login_required  
+def investment_management_view(request):
+    """투자내역 관리 뷰"""
+    try:
+        user_id = request.session.get('user_id')
+        user = UserInfo.objects.get(user_id=user_id)
+        
+        # 투자 내역 조회
+        buy_transactions = InvestmentHistory.objects.filter(user=user, transaction_type='BUY')
+        sell_transactions = InvestmentHistory.objects.filter(user=user, transaction_type='SELL')
+        
+        context = {
+            'user': user,
+            'buy_transactions': buy_transactions,
+            'sell_transactions': sell_transactions
+        }
+        return render(request, 'management/investment.html', context)
+    except Exception as e:
+        logger.error(f"Investment management error: {str(e)}")
+        return redirect('dashboard')
+
+def transfer_management_view(request):
+    """자산입출금 관리 뷰"""
+    try:
+        user_id = request.session.get('user_id')
+        user = UserInfo.objects.get(user_id=user_id)
+        
+        # 입출금 내역 조회
+        transfers = TransferHistory.objects.filter(user=user)
+        
+        context = {
+            'user': user,
+            'transfers': transfers
+        }
+        return render(request, 'management/transfer.html', context)
+    except Exception as e:
+        logger.error(f"Transfer management error: {str(e)}")
+        return redirect('dashboard')
+    
 def process_transfer(request):
     """입출금 처리 뷰"""
     if request.method == 'POST':
         try:
-            user_id = request.session.get('user_id')  
+            user_id = request.session.get('user_id')
             user = UserInfo.objects.get(user_id=user_id)
 
-            amount = float(request.POST.get('amount'))
-            transfer_type = request.POST.get('transfer_type') 
-            is_deposit = transfer_type == 'DEPOSIT'
+            transfer_type = request.POST.get('transfer_type')
+            amount = float(request.POST.get('amount', 0))
 
-            # 가상계좌 잔액 업데이트
-            if is_deposit:
-                user.balance += amount
-            else:
-                if user.balance < amount:
+            if amount <= 0:
+                return JsonResponse({'success': False, 'message': '유효하지 않은 금액입니다.'})
+
+            # 출금 시 잔액 검증
+            if transfer_type == 'WITHDRAW':
+                if not hasattr(user, 'balance') or user.balance < amount:
                     return JsonResponse({'success': False, 'message': '잔액이 부족합니다.'})
-                user.balance -= amount
+
+            # 입출금 처리
+            if transfer_type == 'DEPOSIT':
+                if not hasattr(user, 'balance'):
+                    user.balance = 0
+                user.balance = float(user.balance) + amount
+            else:  # WITHDRAW
+                user.balance = float(user.balance) - amount
+
             user.save()
 
             # 거래 내역 생성
-            transfer_data = {  
-                'transfer_id': f'TR{datetime.now().strftime("%Y%m%d%H%M%S")}',
-                'user': user,
-                'account_id': user.account_id,
-                'virtual_account_id': user.virtual_account_id,
-                'transfer_type': transfer_type,
-                'amount': amount,
-                'balance': user.balance,
-                'status': 'COMPLETED'
-            }
-
-            transfer = TransferHistory(**transfer_data)
+            transfer = TransferHistory(
+                transfer_id=f'TR{datetime.now().strftime("%Y%m%d%H%M%S")}',
+                user=user,
+                bank_id=request.POST.get('bank_id', 'DEFAULT_BANK'),  # 기본값 설정
+                account_id=user.account_id,
+                virtual_account_id=user.virtual_account_id,
+                transfer_type=transfer_type,
+                amount=amount,
+                balance=user.balance,
+                status='COMPLETED'
+            )
             transfer.save()
 
             return JsonResponse({
-                'success': True, 
-                'message': '처리되었습니다.',
-                'balance': user.balance
+                'success': True,
+                'message': '처리가 완료되었습니다.',
+                'data': {
+                    'balance': user.balance,
+                    'transfer_id': transfer.transfer_id,
+                    'transfer_time': transfer.transfer_time.strftime('%Y-%m-%d %H:%M:%S')
+                }
             })
 
+        except UserInfo.DoesNotExist:
+            return JsonResponse({'success': False, 'message': '사용자를 찾을 수 없습니다.'})
         except Exception as e:
-            logger.error(f"Transfer processing error: {str(e)}")  
+            logger.error(f"Transfer processing error: {str(e)}")
             return JsonResponse({'success': False, 'message': '처리 중 오류가 발생했습니다.'})
 
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
