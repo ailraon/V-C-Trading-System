@@ -21,7 +21,7 @@ def signup_view(request):
                 'phone_number': request.POST.get('phone_number'),
                 'account_id': request.POST.get('account_id'), 
                 'virtual_account_id': f'V{datetime.now().strftime("%Y%m%d%H%M%S")}'
-            }
+            } 
 
             user_info = UserInfo(**user_data)
             user_info.save()
