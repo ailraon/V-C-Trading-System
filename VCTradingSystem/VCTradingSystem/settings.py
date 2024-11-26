@@ -129,3 +129,8 @@ STATICFILES_DIRS = [BASE_DIR / 'VCTrading/static']  # 여기에 추가
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Auth settings
+LOGIN_URL = 'login'  # accounts/login/ 대신 login/을 사용하도록 설정
+LOGIN_REDIRECT_URL = 'dashboard'  # 로그인 성공 후 리다이렉트될 URL
+LOGOUT_REDIRECT_URL = 'login'  # 로그아웃 후 리다이렉트될 URL

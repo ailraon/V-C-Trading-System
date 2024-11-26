@@ -1,0 +1,99 @@
+/* Custom styles in addition to Tailwind CSS */
+
+/* Input focus styles */
+.form-input:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* Table hover styles */
+.hover-table-row:hover {
+    background-color: rgba(243, 244, 246, 0.5);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E0 #EDF2F7;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #EDF2F7;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #CBD5E0;
+    border-radius: 4px;
+}
+
+/* Positive/Negative values */
+.positive-value {
+    color: #059669;
+}
+
+.negative-value {
+    color: #DC2626;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: none;
+    z-index: 50;
+}
+
+.toast.success {
+    border-left: 4px solid #059669;
+}
+
+.toast.error {
+    border-left: 4px solid #DC2626;
+}
+
+/* Form validation styles */
+.invalid-feedback {
+    display: none;
+    color: #DC2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+input:invalid + .invalid-feedback {
+    display: block;
+}
+
+/* Responsive table */
+@media (max-width: 640px) {
+    .responsive-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
