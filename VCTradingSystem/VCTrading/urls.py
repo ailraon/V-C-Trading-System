@@ -8,8 +8,11 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),    # 로그인
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),  # 로그아웃
     
-    # 대시보드 관련 URL
-    path('', views.dashboard_view, name='dashboard'),  # 메인 대시보드
+    path('', views.dashboard_view, name='dashboard'),  # 대시보드
+    
+    path('investment/', views.investment_management_view, name='investment_management'),
+    
+    path('transfer/', views.transfer_management_view, name='transfer_management'),
     
     # API 엔드포인트
     path('api/transfer/process/', views.process_transfer, name='process_transfer'),  # 입출금 처리
