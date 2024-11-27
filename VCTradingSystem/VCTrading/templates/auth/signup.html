@@ -5,7 +5,7 @@
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">V&C Trading System</h1>
     </div>
-    
+
     <div class="max-w-md w-full space-y-8">
         <div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">회원가입</h2>
@@ -13,88 +13,100 @@
 
         {% if error %}
         <div class="rounded-md bg-red-50 p-4">
-            <div class="text-sm text-red-700">
-                {{ error }}
-            </div>
+            <div class="text-sm text-red-700">{{ error }}</div>
         </div>
         {% endif %}
 
-        <form class="mt-8 space-y-6" action="{% url 'signup' %}" method="POST">
+        <form class="mt-8 space-y-6" method="POST">
             {% csrf_token %}
             
             <div class="space-y-4">
+                <!-- 아이디 입력 -->
                 <div>
                     <label for="user_id" class="block text-sm font-medium text-gray-700">아이디</label>
-                    <input id="user_id" name="user_id" type="text" required 
+                    <input type="text" id="user_id" name="user_id" maxlength="20" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ user_id|default:'' }}"
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           placeholder="아이디를 입력하세요"
                            {% if error_field == 'user_id' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 중복되지 않는 아이디를 사용해야 합니다</p>
+                    <p class="mt-1 text-sm text-gray-500">* 최대 20자까지 입력 가능합니다</p>
                 </div>
 
+                <!-- 비밀번호 입력 -->
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">비밀번호</label>
-                    <input id="password" name="password" type="password" required
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           placeholder="비밀번호를 입력하세요"
+                    <input type="password" id="password" name="password" minlength="8" maxlength="128" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            {% if error_field == 'password' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 최소 8자 이상이어야 합니다</p>
+                    <p class="mt-1 text-sm text-gray-500">* 최소 8자 이상, 최대 128자까지 입력 가능합니다</p>
                 </div>
 
+                <!-- 이름 입력 -->
                 <div>
                     <label for="user_name" class="block text-sm font-medium text-gray-700">이름</label>
-                    <input id="user_name" name="user_name" type="text" required
-                           value="{{ user_name|default:'' }}"
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           placeholder="이름을 입력하세요"
-                           {% if error_field == 'user_name' %}autofocus{% endif %}>
+                    <input type="text" id="user_name" name="user_name" maxlength="20" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                           value="{{ user_name|default:'' }}">
+                    <p class="mt-1 text-sm text-gray-500">* 최대 20자까지 입력 가능합니다</p>
                 </div>
 
+                <!-- 생년월일 입력 -->
                 <div>
                     <label for="birth_date" class="block text-sm font-medium text-gray-700">생년월일</label>
-                    <input id="birth_date" name="birth_date" type="date" required
-                           value="{{ birth_date|default:'' }}"
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           {% if error_field == 'birth_date' %}autofocus{% endif %}>
+                    <input type="date" id="birth_date" name="birth_date" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                           value="{{ birth_date|default:'' }}">
                     <p class="mt-1 text-sm text-gray-500">* YYYY-MM-DD 형식으로 입력해주세요</p>
                 </div>
 
+                <!-- 전화번호 입력 -->
                 <div>
                     <label for="phone_number" class="block text-sm font-medium text-gray-700">전화번호</label>
-                    <input id="phone_number" name="phone_number" type="tel" required
+                    <input type="tel" id="phone_number" name="phone_number" maxlength="13" required
+                           pattern="^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$"
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ phone_number|default:'' }}"
-                           pattern="[0-9]{3}-[0-9]{3,4}-[0-9]{4}"
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           placeholder="010-0000-0000"
                            {% if error_field == 'phone_number' %}autofocus{% endif %}>
                     <p class="mt-1 text-sm text-gray-500">* 010-0000-0000 형식으로 입력해주세요</p>
                 </div>
 
+                <!-- 은행 선택 및 계좌번호 입력 -->
+                <div>
+                    <label for="bank_name" class="block text-sm font-medium text-gray-700">은행 선택</label>
+                    <select id="bank_name" name="bank_name" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                        <option value="">은행을 선택하세요</option>
+                        <option value="KB">국민은행</option>
+                        <option value="WOORI">우리은행</option>
+                        <option value="NH">농협은행</option>
+                        <option value="SHINHAN">신한은행</option>
+                        <option value="HANA">하나은행</option>
+                        <option value="IBK">기업은행</option>
+                    </select>
+                </div>
+
                 <div>
                     <label for="account_id" class="block text-sm font-medium text-gray-700">계좌번호</label>
-                    <input id="account_id" name="account_id" type="text" required
+                    <input type="text" id="account_id" name="account_id" maxlength="20" required
+                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ account_id|default:'' }}"
-                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                           placeholder="계좌번호를 입력하세요"
                            {% if error_field == 'account_id' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 중복되지 않는 계좌번호를 입력해주세요</p>
+                    <p class="mt-1 text-sm text-gray-500">* 최대 20자까지 입력 가능합니다</p>
                 </div>
             </div>
 
             <div>
                 <button type="submit"
-                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     회원가입
                 </button>
             </div>
-        </form>
 
-        <div class="text-center">
-            <a href="{% url 'login' %}" class="text-sm text-blue-600 hover:text-blue-500">
-                이미 계정이 있으신가요? 로그인
-            </a>
-        </div>
+            <div class="text-center">
+                <a href="{% url 'login' %}" class="text-sm text-blue-600 hover:text-blue-500">
+                    이미 계정이 있으신가요? 로그인
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 

@@ -246,7 +246,7 @@ class VCTradingSystem:
                 # 먼저 은행 계좌 생성
                 bank_account = BankAccount.objects.create(
                     account_id=user_data['account_id'],
-                    bank_name='DEFAULT_BANK',
+                    bank_name=user_data['bank_name'],
                     balance=0.00
                 )
 
@@ -343,15 +343,28 @@ def signup_view(request):
             'user_name': request.POST.get('user_name', ''),
             'birth_date': request.POST.get('birth_date', ''),
             'phone_number': request.POST.get('phone_number', ''),
+            'bank_name': request.POST.get('bank_name', ''),  # 은행 선택 추가
             'account_id': request.POST.get('account_id', '')
         })
+
+        # 은행 선택 검증
+        if not context['bank_name']:
+            context['error'] = "은행을 선택해주세요."
+            context['error_field'] = 'bank_name'
+            return render(request, 'auth/signup.html', context)
+        
+        # 계좌번호 형식 검증 추가
+        account_id = context['account_id']
+        if not account_id.isdigit():
+            context['error'] = "계좌번호는 숫자만 입력 가능합니다."
+            context['error_field'] = 'account_id'
+            return render(request, 'auth/signup.html', context)
         
         success, result = user.sign_up_request(request)
         if not success:
             context['error'] = result
-            # 에러가 발생한 필드를 찾아서 포커싱
             error_field = result.split()[0].lower()
-            if error_field in ['이미', '올바른', '존재하지']:  # 에러 메시지 첫 단어로 필드 식별
+            if error_field in ['이미', '올바른', '존재하지']:
                 if '아이디' in result:
                     error_field = 'user_id'
                 elif '비밀번호' in result:
@@ -363,12 +376,13 @@ def signup_view(request):
             context['error_field'] = error_field
             return render(request, 'auth/signup.html', context)
         
+        # bank_name 추가하여 process_sign_up 호출
+        result['bank_name'] = context['bank_name']
         success, message = trading_system.process_sign_up(result)
         if not success:
             context['error'] = message
             return render(request, 'auth/signup.html', context)
-            
-        # 회원가입 성공 메시지 추가
+        
         messages.success(request, '회원가입이 성공적으로 완료되었습니다. 로그인해주세요.')
         return redirect('login')
     
@@ -465,6 +479,9 @@ def transfer_management_view(request):
         if not user:
             return redirect('login')
         
+        # 페이지 파라미터
+        page = request.GET.get('page', 1)
+        
         virtual_account = trading_system.get_virtual_account(user.virtual_account_id)
         real_account = trading_system.get_bank_account(user.account_id)
         transfers = trading_system.asset_transfer_manager.get_transfer_history(user)
@@ -473,11 +490,15 @@ def transfer_management_view(request):
             logger.error("Account information not found")
             return redirect('dashboard')
         
+        # 페이지네이션 설정 (10개씩 표시)
+        paginator = Paginator(transfers, 10)
+        current_page = paginator.get_page(page)
+        
         context = {
             'user': user,
             'virtual_account': virtual_account,
             'real_account': real_account,
-            'transfers': transfers,
+            'transfers': current_page,
         }
         return render(request, 'management/transfer.html', context)
     except Exception as e:
@@ -572,3 +593,56 @@ def logout_view(request):
     messages.success(request, '성공적으로 로그아웃되었습니다.')
     
     return response
+
+# 실계좌 테스트 입금 처리를 위한 새로운 뷰 함수
+def deposit_to_real_account(request):
+    """테스트용 실계좌 입금 처리"""
+    if request.method == 'POST':
+        trading_system = VCTradingSystem()
+        
+        try:
+            user_id = request.session.get('user_id')
+            user = trading_system.get_user_info(user_id)
+            if not user:
+                messages.error(request, '사용자 정보를 찾을 수 없습니다.')
+                return JsonResponse({
+                    'success': False,
+                    'message': '사용자 정보를 찾을 수 없습니다.'
+                })
+            
+            amount = Decimal(request.POST.get('amount', '0'))
+            
+            if amount <= 0:
+                messages.error(request, '유효하지 않은 금액입니다.')
+                return JsonResponse({
+                    'success': False,
+                    'message': '유효하지 않은 금액입니다.'
+                })
+            
+            # 실계좌 조회 및 잔액 업데이트
+            with transaction.atomic():
+                real_account = BankAccount.objects.get(account_id=user.account_id)
+                real_account.balance += amount
+                real_account.save()
+            
+            messages.success(request, f'{amount:,.0f}원이 입금되었습니다.')
+            return JsonResponse({
+                'success': True,
+                'message': '입금이 완료되었습니다.',
+                'data': {
+                    'balance': str(real_account.balance)
+                }
+            })
+        except Exception as e:
+            logger.error(f"Test deposit error: {str(e)}")
+            messages.error(request, '처리 중 오류가 발생했습니다.')
+            return JsonResponse({
+                'success': False,
+                'message': f'처리 중 오류가 발생했습니다: {str(e)}'
+            })
+    
+    messages.error(request, '잘못된 요청입니다.')
+    return JsonResponse({
+        'success': False,
+        'message': '잘못된 요청입니다.'
+    })
