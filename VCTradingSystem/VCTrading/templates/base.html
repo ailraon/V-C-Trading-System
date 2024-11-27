@@ -17,6 +17,9 @@
                 <div class="flex items-center">
                     <a href="{% url 'dashboard' %}" class="text-xl font-bold">V&C Trading System</a>
                 </div>
+                <div>
+                    <a href="{% url 'crypto_list' %}" class="text-xl font-bold">거래소</a>
+                </div>
                 <div class="flex items-center">
                     <span class="mr-4">{{ request.session.user_id }}</span>
                     <a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-900">로그아웃</a>

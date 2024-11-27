@@ -6,6 +6,7 @@ from .models import UserInfo, InvestmentHistory, TransferHistory
 import uuid
 from datetime import datetime
 import logging
+from .utils import get_markets, get_current_price, get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
 
 logger = logging.getLogger(__name__)
 
@@ -164,3 +165,27 @@ def process_transfer(request):
             return JsonResponse({'success': False, 'message': '처리 중 오류가 발생했습니다.'})
 
     return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'})
+
+def cryptolist_view(request):
+    """
+    가상화폐 목록 및 가격 조회
+    """
+    try:
+        # 업비트 지원 마켓 목록 가져오기
+        # markets = get_markets()
+
+        # 예시: KRW-BTC, KRW-ETH의 현재 가격 가져오기
+        # selected_markets = ["KRW-BTC", "KRW-ETH"]
+        # prices = {market: get_current_price(market) for market in selected_markets}
+        # prices = get_current_price(markets)
+
+        # context = {
+        #     "markets": markets,  # 상위 10개만 표시
+        #     "prices": prices,         # 현재 가격 정보
+        # }
+        # return render(request, "cryptocurrency/cryptolist.html", context)
+        market_data = get_krw_markets_with_prices_and_change()
+        return render(request, "cryptocurrency/cryptolist.html", {"market_data": market_data})
+
+    except Exception as e:
+        return render(request, "cryptocurrency/cryptolist.html", {"error": str(e)})

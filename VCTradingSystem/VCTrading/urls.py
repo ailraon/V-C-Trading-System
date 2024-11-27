@@ -16,4 +16,6 @@ urlpatterns = [
     
     # API 엔드포인트
     path('api/transfer/process/', views.process_transfer, name='process_transfer'),  # 입출금 처리
+
+    path('crypto/', views.cryptolist_view, name='crypto_list'),
 ]
