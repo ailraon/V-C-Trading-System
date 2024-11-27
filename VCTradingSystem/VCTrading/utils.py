@@ -1,32 +1,4 @@
-import pyupbit
 import requests
-
-def get_markets():
-    """
-    업비트 지원 마켓 목록 조회
-    """
-    try:
-        # url = "https://api.upbit.com/v1/market/all"
-        # response = requests.get(url)
-        # response.raise_for_status()  # HTTP 오류 발생 시 예외 발생
-        # data = response.json()
-        # return data  # 시장 정보 (예: [{'market': 'KRW-BTC', 'korean_name': '비트코인', ...}])
-        markets = pyupbit.get_tickers(fiat="KRW")
-        return markets
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching market data: {e}")
-        return []
-
-def get_current_price(market):
-    """
-    특정 마켓의 현재 가격 조회
-    """
-    try:
-        price = pyupbit.get_current_price(market)
-        return price
-    except Exception as e:
-        print(f"Error fetching current price for {market}: {e}")
-        return None
 
 def get_krw_markets_with_prices_and_change():
     # 1. 업비트 마켓 정보 가져오기

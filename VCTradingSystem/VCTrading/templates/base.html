@@ -16,6 +16,9 @@
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex justify-between items-center h-16"> 
             <a href="{% url 'dashboard' %}" class="text-xl font-bold">V&C Trading System</a>
+            <div>
+                <a href="{% url 'crypto' %}">거래소</a>
+            </div>
             <div class="flex items-center">
                 <span class="mr-4">{{ request.session.user_id }}</span>
                 <form action="{% url 'logout' %}" method="POST" class="m-0">
