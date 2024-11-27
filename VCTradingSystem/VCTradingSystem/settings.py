@@ -48,6 +48,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'VCTrading.middleware.auth_middleware.AuthenticationMiddleware', # 로그아웃 기능을 위해 추가함
 ]
 
 ROOT_URLCONF = 'VCTradingSystem.urls'
@@ -58,6 +59,9 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'VCTrading/templates'],  # 템플릿 디렉토리 추가
         'APP_DIRS': True,
         'OPTIONS': {
+            'builtins': [
+                'django.templatetags.static', # 로그아웃 후 뒤로가기 
+            ],
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',

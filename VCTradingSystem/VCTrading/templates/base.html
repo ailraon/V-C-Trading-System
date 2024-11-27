@@ -1,37 +1,55 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>V&C Trading System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    {% load static %}
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
     {% if request.session.user_id %}
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="{% url 'dashboard' %}" class="text-xl font-bold">V&C Trading System</a>
-                </div>
-                <div class="flex items-center">
-                    <span class="mr-4">{{ request.session.user_id }}</span>
-                    <a href="{% url 'logout' %}" class="text-gray-600 hover:text-gray-900">로그아웃</a>
-                </div>
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between items-center h-16"> 
+            <a href="{% url 'dashboard' %}" class="text-xl font-bold">V&C Trading System</a>
+            <div class="flex items-center">
+                <span class="mr-4">{{ request.session.user_id }}</span>
+                <form action="{% url 'logout' %}" method="POST" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        로그아웃
+                    </button>
+                </form>
             </div>
         </div>
-    </nav>
+    </div>
     {% endif %}
 
-    <main>
-        {% block content %}
-        {% endblock %}
+    <main role="main" class="max-w-7xl mx-auto mt-6 px-4">
+        {% block content %}{% endblock %} 
     </main>
 
-    {% block scripts %}
-    {% endblock %}
+    {% block scripts %}{% endblock %}
+
+    <script>
+        // 뒤로가기 방지
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                window.location.reload();
+            }
+        });
+
+        // 로그아웃 후 뒤로가기 방지 
+        if (window.history && window.history.pushState) {
+            window.history.pushState('forward', null, window.location.href);
+            window.onpopstate = function() {
+                window.history.pushState('forward', null, window.location.href);
+            };
+        }
+    </script>
 </body>
 </html>
