@@ -7,6 +7,8 @@ from django.core.paginator import Paginator
 from datetime import datetime
 import logging
 from .utils import get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
+import pyupbit
+from .models import CryptoPrediction
 
 import re  # re 모듈 추가
 from decimal import Decimal
@@ -659,3 +661,39 @@ def cryptolist_view(request):
 
     except Exception as e:
         return render(request, "cryptocurrency/cryptolist.html", {"error": str(e)})
+
+# 가상화폐 예측
+
+def prediction_view(request):
+    """가상화폐 예측 페이지 렌더링"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return redirect('login')
+            
+        return render(request, 'cryptocurrency/prediction.html')
+    except Exception as e:
+        logger.error(f"Prediction view error: {str(e)}")
+        messages.error(request, '예측 페이지를 불러오는 중 오류가 발생했습니다.')
+        return redirect('dashboard')
+
+def get_prediction_data(request, coin_id):
+    """가상화폐 가격 예측 데이터 API"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JsonResponse({
+                'status': 'error',
+                'error': '로그인이 필요합니다.'
+            }, status=401)
+
+        predictor = CryptoPrediction(coin_id)
+        prediction_data = predictor.get_prediction()
+        return JsonResponse(prediction_data)
+        
+    except Exception as e:
+        logger.error(f"Prediction API error: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e)
+        }, status=500)

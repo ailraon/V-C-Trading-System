@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="prediction-wrapper">
+    <div class="prediction-header">
+        <h2>가상화폐 가격 예측</h2>
+    </div>
+    
+    <div class="price-info-container">
+        <div class="price-card">
+            <h3>현재 가격</h3>
+            <div id="currentPrice" class="price-value">로딩중...</div>
+        </div>
+        <div class="price-card">
+            <h3>다음 예측 가격</h3>
+            <div id="predictedPrice" class="price-value">로딩중...</div>
+        </div>
+    </div>
+
+    <div class="prediction-stats">
+        <div class="stat-card">
+            <h4>최저 예상가</h4>
+            <div id="minPrice" class="stat-value">로딩중...</div>
+        </div>
+        <div class="stat-card">
+            <h4>최고 예상가</h4>
+            <div id="maxPrice" class="stat-value">로딩중...</div>
+        </div>
+        <div class="stat-card">
+            <h4>평균 예상가</h4>
+            <div id="avgPrice" class="stat-value">로딩중...</div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="predictionChart"></canvas>
+    </div>
+
+    <button onclick="updatePrediction()" class="update-btn">예측 업데이트</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="{% static 'js/prediction.js' %}"></script>
+{% endblock %}
