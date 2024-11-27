@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container mx-auto px-4 py-8">
+<div class="container-fluid px-4 py-8"> <!-- container-fluid로 변경하여 더 넓은 너비 확보 -->
     <div class="grid grid-cols-12 gap-6">
         <!-- 계좌 정보 섹션 -->
-        <div class="col-span-4">
+        <div class="col-span-2"> <!-- col-span-4에서 2로 변경하여 거래내역 섹션에 더 많은 공간 할당 -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-lg font-bold mb-4">계좌 정보</h2>
                 <div class="space-y-4">
@@ -21,7 +21,7 @@
         </div>
 
         <!-- 거래내역 섹션 -->
-        <div class="col-span-8">
+        <div class="col-span-10"> <!-- col-span-8에서 10으로 변경 -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <!-- 탭 버튼 -->
                 <div class="flex space-x-4 mb-6">
@@ -36,50 +36,50 @@
                 </div>
 
                 <!-- 거래내역 테이블 -->
-                <div class="overflow-x-auto w-full">
-                    <table class="min-w-full table-auto">
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto">
                         <thead>
                             <tr class="bg-gray-50">
-                                <th class="px-4 py-2 text-left">거래시간</th>
-                                <th class="px-4 py-2 text-left">가상화폐</th>
-                                <th class="px-4 py-2 text-right">거래량</th>
+                                <th class="px-6 py-3 text-left">거래시간</th>
+                                <th class="px-6 py-3 text-left">가상화폐</th>
+                                <th class="px-6 py-3 text-right">거래량</th>
                                 {% if transaction_type == 'sell' %}
-                                    <th class="px-4 py-2 text-right">매도가</th>
-                                    <th class="px-4 py-2 text-right">실현손익</th>
+                                    <th class="px-6 py-3 text-right">매도가</th>
+                                    <th class="px-6 py-3 text-right">실현손익</th>
                                 {% else %}
-                                    <th class="px-4 py-2 text-right">현재가</th>
-                                    <th class="px-4 py-2 text-right">평가액</th>
-                                    <th class="px-4 py-2 text-right">총 거래금액</th>
-                                    <th class="px-4 py-2 text-right">수익률</th>
+                                    <th class="px-6 py-3 text-right">현재가</th>
+                                    <th class="px-6 py-3 text-right">평가액</th>
+                                    <th class="px-6 py-3 text-right">총 거래금액</th>
+                                    <th class="px-6 py-3 text-right">수익률</th>
                                 {% endif %}
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             {% for trans in transactions %}
-                            <tr>
-                                <td class="px-4 py-2">{{ trans.transaction_time|date:"Y-m-d H:i" }}</td>
-                                <td class="px-4 py-2">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">{{ trans.transaction_time|date:"Y-m-d H:i" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="font-medium">{{ trans.crypto.crypto_name }}</div>
                                     <div class="text-sm text-gray-500">{{ trans.crypto.crypto_type }}</div>
                                 </td>
-                                <td class="px-4 py-2 text-right">{{ trans.trade_volume|floatformat:8 }}</td>
+                                <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.trade_volume|floatformat:8 }}</td>
                                 {% if transaction_type == 'sell' %}
-                                    <td class="px-4 py-2 text-right">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
                                         {% if trans.rate_of_return >= 0 %}+{% endif %}{{ trans.rate_of_return|floatformat:2 }}%
                                     </td>
                                 {% else %}
-                                    <td class="px-4 py-2 text-right">{{ trans.crypto.crypto_price|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ trans.valuation|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.crypto.crypto_price|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.valuation|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right whitespace-nowrap {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
                                         {% if trans.rate_of_return >= 0 %}+{% endif %}{{ trans.rate_of_return|floatformat:2 }}%
                                     </td>
                                 {% endif %}
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="{% if transaction_type == 'sell' %}5{% else %}7{% endif %}" class="px-4 py-2 text-center">
+                                <td colspan="{% if transaction_type == 'sell' %}5{% else %}7{% endif %}" class="px-6 py-4 text-center">
                                     {% if transaction_type == 'sell' %}매도{% else %}매수{% endif %} 내역이 없습니다.
                                 </td>
                             </tr>
