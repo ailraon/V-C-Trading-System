@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from datetime import datetime
 import logging
-from .utils import get_markets, get_current_price, get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
+from .utils import get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
 
 import re  # re 모듈 추가
 from decimal import Decimal
@@ -648,3 +648,14 @@ def deposit_to_real_account(request):
         'success': False,
         'message': '잘못된 요청입니다.'
     })
+
+def cryptolist_view(request):
+    """
+    가상화폐 목록 및 가격 조회
+    """
+    try:
+        market_data = get_krw_markets_with_prices_and_change()
+        return render(request, "cryptocurrency/cryptolist.html", {"market_data": market_data})
+
+    except Exception as e:
+        return render(request, "cryptocurrency/cryptolist.html", {"error": str(e)})
