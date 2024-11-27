@@ -1,34 +1,53 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+
+<div class="min-h-screen flex flex-col items-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">V&C Trading System</h1>
+    </div>
+    
     <div class="max-w-md w-full space-y-8">
         <div>
-            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                로그인
-            </h2>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">로그인</h2>
         </div>
-        <form class="mt-8 space-y-6" method="POST">
-            {% csrf_token %}
-            {% if error %}
-            <div class="rounded-md bg-red-50 p-4">
-                <div class="text-sm text-red-700">
-                    {{ error }}
-                </div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div class="rounded-md {% if message.tags == 'success' %}bg-green-50{% else %}bg-red-50{% endif %} p-4">
+            <div class="text-sm {% if message.tags == 'success' %}text-green-700{% else %}text-red-700{% endif %}">
+                {{ message }}
             </div>
-            {% endif %}
-            <div class="rounded-md shadow-sm -space-y-px">
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if error %}
+        <div class="rounded-md bg-red-50 p-4">
+            <div class="text-sm text-red-700">
+                {{ error }}
+            </div>
+        </div>
+        {% endif %}
+
+        <form class="mt-8 space-y-6" action="{% url 'login' %}" method="POST">
+            {% csrf_token %}
+            
+            <div class="rounded-md shadow-sm space-y-4">
                 <div>
-                    <label for="user_id" class="sr-only">아이디</label>
+                    <label for="user_id" class="block text-sm font-medium text-gray-700">아이디</label>
                     <input id="user_id" name="user_id" type="text" required
-                        class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                        placeholder="아이디">
+                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                           placeholder="아이디를 입력하세요"
+                           value="{{ user_id|default:'' }}"
+                           {% if error_field == 'user_id' %}autofocus{% endif %}>
                 </div>
+
                 <div>
-                    <label for="password" class="sr-only">비밀번호</label>
+                    <label for="password" class="block text-sm font-medium text-gray-700">비밀번호</label>
                     <input id="password" name="password" type="password" required
-                        class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                        placeholder="비밀번호">
+                           class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                           placeholder="비밀번호를 입력하세요"
+                           {% if error_field == 'password' %}autofocus{% endif %}>
                 </div>
             </div>
 
@@ -39,6 +58,7 @@
                 </button>
             </div>
         </form>
+
         <div class="text-center">
             <a href="{% url 'signup' %}" class="text-sm text-blue-600 hover:text-blue-500">
                 계정이 없으신가요? 회원가입
@@ -46,4 +66,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %}

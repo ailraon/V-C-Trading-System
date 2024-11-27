@@ -6,7 +6,7 @@ urlpatterns = [
     # 인증 관련 URL
     path('signup/', views.signup_view, name='signup'),  # 회원가입
     path('login/', views.login_view, name='login'),    # 로그인
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),  # 로그아웃
+    path('logout/', views.logout_view, name='logout'),
     
     path('', views.dashboard_view, name='dashboard'),  # 대시보드
     
@@ -18,4 +18,7 @@ urlpatterns = [
     path('api/transfer/process/', views.process_transfer, name='process_transfer'),  # 입출금 처리
 
     path('crypto/', views.cryptolist_view, name='crypto_list'),
+    
+    # 테스트용 실계좌 입금 처리 URL
+    path('api/test/deposit/', views.deposit_to_real_account, name='test_deposit'),
 ]
