@@ -6,7 +6,7 @@ urlpatterns = [
     # 인증 관련 URL
     path('signup/', views.signup_view, name='signup'),  # 회원가입
     path('login/', views.login_view, name='login'),    # 로그인
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),  # 로그아웃
+    path('logout/', views.logout_view, name='logout'),
     
     path('', views.dashboard_view, name='dashboard'),  # 대시보드
     
