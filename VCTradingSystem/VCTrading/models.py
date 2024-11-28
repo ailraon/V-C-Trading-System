@@ -101,68 +101,85 @@ class TransferHistory(models.Model):
        db_table = 'Transfer_History'
 
 class CryptoPrediction:
-   """가상화폐 예측 모델 클래스"""
-   def __init__(self, coin_id: str):
-       self.coin_id = coin_id
-       self.ticker = f'KRW-{coin_id}'
-       self.scaler = MinMaxScaler()
-       self.window_size = 60
-       self.model = self._build_model()
+    def __init__(self, coin_id: str):
+        self.coin_id = coin_id
+        self.ticker = f'KRW-{coin_id}'
+        self.scaler = MinMaxScaler()
+        self.window_size = 60
+        self.model = self._build_model()
 
-   def _build_model(self):
-        """LSTM 모델 구축"""
-        model = keras.Sequential()
-        # Input 레이어 추가
-        model.add(keras.layers.Input(shape=(self.window_size, 1)))
-        model.add(keras.layers.LSTM(50, return_sequences=True))
-        model.add(keras.layers.LSTM(50))
-        model.add(keras.layers.Dense(25))
-        model.add(keras.layers.Dense(1))
-        
+    def _build_model(self):
+        model = keras.Sequential([
+            keras.layers.LSTM(50, return_sequences=True, input_shape=(self.window_size, 1)),
+            keras.layers.LSTM(50, return_sequences=False),
+            keras.layers.Dense(25),
+            keras.layers.Dense(1)
+        ])
         model.compile(optimizer='adam', loss='mse')
         return model
 
-   def get_prediction(self, count=7):
-       try:
-           current_price = pyupbit.get_current_price(self.ticker)
-           df = pyupbit.get_ohlcv(self.ticker, interval="day", count=100)
-           
-           if df is None or current_price is None:
-               raise ValueError("가격 데이터를 가져올 수 없습니다.")
+    def get_prediction(self, count=20):
+        try:
+            current_price = pyupbit.get_current_price(self.ticker)
+            df = pyupbit.get_ohlcv(self.ticker, interval="day", count=100)
+            
+            if df is None or current_price is None:
+                raise ValueError("가격 데이터를 가져올 수 없습니다.")
 
-           prices = df['close'].values
-           scaled_data = self.scaler.fit_transform(prices.reshape(-1, 1))
-           
-           last_sequence = scaled_data[-self.window_size:]
-           predictions = []
-           dates = []
-           
-           current_sequence = last_sequence.reshape(1, self.window_size, 1)
-           for i in range(count):
-               next_pred = self.model.predict(current_sequence, verbose=0)
-               predictions.append(float(self.scaler.inverse_transform(next_pred)[0, 0]))
-               
-               current_sequence = np.roll(current_sequence, -1, axis=1)
-               current_sequence[0, -1, 0] = next_pred[0, 0]
-               
-               next_date = datetime.now() + timedelta(days=i+1)
-               dates.append(next_date.strftime('%Y-%m-%d'))
+            # 트렌드와 변동성 분석
+            daily_returns = df['close'].pct_change().dropna()
+            volatility = daily_returns.std()
+            trend = daily_returns.mean()
 
-           return {
-               'status': 'success',
-               'current_price': current_price,
-               'predictions': {
-                   'dates': dates,
-                   'prices': predictions,
-                   'min_price': min(predictions),
-                   'max_price': max(predictions),
-                   'avg_price': sum(predictions) / len(predictions)
-               }
-           }
+            # 추세 방향 감지
+            short_ma = df['close'].rolling(window=7).mean()
+            long_ma = df['close'].rolling(window=20).mean()
+            is_uptrend = short_ma.iloc[-1] > long_ma.iloc[-1]
 
-       except Exception as e:
-           logger.error(f"Prediction error for {self.coin_id}: {str(e)}")
-           return {
-               'status': 'error',
-               'error': str(e)
-           }
+            predictions = []
+            dates = []
+            last_price = current_price
+
+            for i in range(count):
+                # 변동성을 기반으로 한 랜덤 변화
+                random_change = np.random.normal(0, volatility)
+                
+                # 추세 기반 조정
+                if is_uptrend:
+                    # 상승 추세일 때는 양의 방향으로 더 큰 변화
+                    trend_factor = abs(trend) * 2 if trend > 0 else abs(trend)
+                else:
+                    # 하락 추세일 때는 음의 방향으로 더 큰 변화
+                    trend_factor = -abs(trend) * 2 if trend < 0 else -abs(trend)
+
+                # 최종 가격 변화율 계산
+                change_rate = random_change + trend_factor
+
+                # 가격 예측
+                next_price = last_price * (1 + change_rate)
+                
+                # 극단적인 변화 방지
+                max_change = 0.1  # 최대 10% 변화
+                if abs((next_price - last_price) / last_price) > max_change:
+                    if next_price > last_price:
+                        next_price = last_price * (1 + max_change)
+                    else:
+                        next_price = last_price * (1 - max_change)
+
+                predictions.append(float(next_price))
+                last_price = next_price
+                
+                next_date = datetime.now() + timedelta(days=i+1)
+                dates.append(next_date.strftime('%Y-%m-%d'))
+
+            return {
+                'dates': dates,
+                'prices': predictions,
+                'min_price': min(predictions),
+                'max_price': max(predictions),
+                'avg_price': sum(predictions) / len(predictions)
+            }
+                
+        except Exception as e:
+            logger.error(f"Prediction error for {self.ticker}: {str(e)}")
+            raise
