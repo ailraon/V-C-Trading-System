@@ -690,24 +690,41 @@ def get_prediction_data(request, coin_id):
     가상화폐 가격 예측 데이터 API
     """
     try:
+        # 기간 유효성 검사
+        period = int(request.GET.get('period', 20))
+        if not 1 <= period <= 365:
+            return JsonResponse({
+                'status': 'error',
+                'error': '예측 기간은 1~365일 사이여야 합니다.'
+            }, status=400)
+
         # 코인 심볼 유효성 검사
         if not re.match(r'^[A-Z]{2,10}$', coin_id):
-            return JsonResponse({'status': 'error', 'error': '유효하지 않은 코인 심볼입니다.'}, status=400)
+            return JsonResponse({
+                'status': 'error',
+                'error': '유효하지 않은 코인 심볼입니다.'
+            }, status=400)
 
         # 현재 가격 조회
         current_price = pyupbit.get_current_price(f"KRW-{coin_id}")
         if current_price is None:
-            return JsonResponse({'status': 'error', 'error': '현재 가격을 가져올 수 없습니다.'}, status=404)
+            return JsonResponse({
+                'status': 'error',
+                'error': '현재 가격을 가져올 수 없습니다.'
+            }, status=404)
 
         # 예측 데이터 생성
         predictor = CryptoPrediction(coin_id)
-        prediction_data = predictor.get_prediction()
+        prediction_data = predictor.get_prediction(count=period)
 
-        # 예측 데이터가 비어 있으면 오류 반환
+        # 예측 데이터 유효성 검사
         if not prediction_data or not prediction_data.get('prices'):
-            return JsonResponse({'status': 'error', 'error': '예측 데이터를 생성할 수 없습니다.'}, status=500)
+            return JsonResponse({
+                'status': 'error',
+                'error': '예측 데이터를 생성할 수 없습니다.'
+            }, status=500)
 
-        # 응답 데이터 구성 및 로깅
+        # 응답 데이터 구성
         response_data = {
             'status': 'success',
             'current_price': current_price,
@@ -717,10 +734,21 @@ def get_prediction_data(request, coin_id):
             'max_price': prediction_data['max_price'],
             'avg_price': prediction_data['avg_price']
         }
-        logger.info(f"Prediction response for {coin_id}: {response_data}")
 
+        # 응답 로깅
+        logger.info(f"Prediction response for {coin_id}: {response_data}")
         return JsonResponse(response_data, status=200)
+
+    except ValueError as e:
+        logger.error(f"Value error for {coin_id}: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'error': '잘못된 입력값입니다.'
+        }, status=400)
 
     except Exception as e:
         logger.error(f"Prediction API error for {coin_id}: {str(e)}")
-        return JsonResponse({'status': 'error', 'error': f'예측 데이터 처리 중 오류가 발생했습니다: {str(e)}'}, status=500)
+        return JsonResponse({
+            'status': 'error',
+            'error': f'예측 데이터 처리 중 오류가 발생했습니다: {str(e)}'
+        }, status=500)

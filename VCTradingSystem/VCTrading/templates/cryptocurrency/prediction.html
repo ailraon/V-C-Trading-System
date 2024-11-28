@@ -21,12 +21,12 @@
                     <option value="OTHER">그 외</option>
                 </select>
                 
-                <div id="customSearch">
+                <div id="customSearch" class="mt-4 hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">직접 입력</label>
                     <div class="flex gap-2">
                         <input type="text" id="customCoin" 
                                class="form-input flex-1 rounded-md"
-                               placeholder="코인 심볼 입력 (예: BTC)">
+                               placeholder="코인 심볼 입력 (예: CTC)">
                         <button onclick="predictCustomCoin()" 
                                 class="prediction-btn">
                             검색
@@ -61,6 +61,21 @@
             <div class="bg-gray-50 rounded-lg p-4">
                 <div class="text-sm font-medium text-gray-500 mb-1">평균 예상가</div>
                 <div id="avgPrice" class="text-lg font-bold">로딩중...</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 mb-8">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">예측 기간</label>
+                <div class="flex gap-4">
+                    <button class="period-btn prediction-btn" data-days="7">1주</button>
+                    <button class="period-btn prediction-btn" data-days="30">1개월</button>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="customPeriod" class="form-input w-20" min="1" max="365">
+                        <span>일</span>
+                        <button onclick="setCustomPeriod()" class="prediction-btn">적용</button>
+                    </div>
+                </div>
             </div>
         </div>
 

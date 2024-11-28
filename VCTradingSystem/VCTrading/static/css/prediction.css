@@ -1,103 +1,186 @@
 /* Base styles */
 .prediction-wrapper {
-    @apply p-10 max-w-7xl mx-auto bg-gray-50;
- }
- 
- /* Header */
- .prediction-header {
-    @apply text-center mb-10;
- }
- 
- .prediction-header h2 {
-    @apply text-3xl font-bold text-gray-900 mb-5;
- }
- 
- /* Search controls */
- .prediction-controls {
-    @apply flex justify-center gap-4 flex-wrap;
- }
- 
- .form-input, 
- .coin-select {
-    @apply px-4 py-3.5 border border-gray-300 rounded-full min-w-[220px] bg-white transition-all;
- }
- 
- .form-input:hover,
- .coin-select:hover {
-    @apply border-blue-500 bg-gray-50;
- }
- 
- .form-input:focus {
-    @apply outline-none ring-2 ring-blue-500 border-transparent;
- }
- 
- .prediction-btn {
-    @apply px-6 py-3.5 bg-gradient-to-r from-blue-500 to-blue-400 
-           text-white font-bold rounded-full transition-all
-           hover:from-blue-600 hover:to-blue-500 hover:-translate-y-0.5;
- }
- 
- /* Price cards */
- .price-info-container {
-    @apply flex flex-col md:flex-row gap-5 mb-10;
- }
- 
- .price-card {
-    @apply bg-white p-8 rounded-2xl shadow-lg text-center 
-           transition-transform hover:-translate-y-1;
- }
- 
- .price-card h3 {
-    @apply text-xl text-gray-600 mb-4;
- }
- 
- .price-value {
-    @apply text-3xl font-bold text-blue-500;
- }
- 
- /* Stat cards */
- .prediction-stats {
-    @apply flex flex-col md:flex-row justify-between gap-5 mb-10;
- }
- 
- .stat-card {
-    @apply flex-1 bg-white p-5 rounded-2xl shadow-lg text-center
-           min-w-[200px] transition-transform hover:-translate-y-1;
- }
- 
- .stat-card h4 {
-    @apply text-lg text-gray-600 mb-2;
- }
- 
- .stat-value {
-    @apply text-2xl font-bold text-gray-900;
- }
- 
- /* Chart container */
- .chart-container {
-    @apply bg-white p-8 rounded-2xl shadow-lg h-[500px];
- }
- 
- /* States */
- .positive-value {
-    @apply text-green-600;
- }
- 
- .negative-value {
-    @apply text-red-600;
- }
- 
- .error-state {
-    @apply text-red-500 italic text-sm text-center;
- }
- 
- /* Loading spinner */
- .loading-spinner {
-    @apply border-4 border-gray-200 rounded-full w-6 h-6;
-    border-top-color: #3B82F6;
+    padding: 2.5rem;
+    max-width: 80rem;
+    margin: 0 auto;
+    background-color: rgb(249, 250, 251);
+}
+
+/* Header */
+.prediction-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.prediction-header h2 {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: rgb(17, 24, 39);
+    margin-bottom: 1.25rem;
+}
+
+/* Search controls */
+.prediction-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-input, 
+.coin-select {
+    padding: 0.875rem 1rem;
+    border: 1px solid rgb(209, 213, 219);
+    border-radius: 9999px;
+    min-width: 220px;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.form-input:hover,
+.coin-select:hover {
+    border-color: rgb(59, 130, 246);
+    background-color: rgb(249, 250, 251);
+}
+
+.form-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(59, 130, 246);
+    border-color: transparent;
+}
+
+.prediction-btn {
+    padding: 0.875rem 1.5rem;
+    background-image: linear-gradient(to right, rgb(59, 130, 246), rgb(96, 165, 250));
+    color: white;
+    font-weight: bold;
+    border-radius: 9999px;
+    transition: all 0.2s;
+}
+
+.prediction-btn:hover {
+    background-image: linear-gradient(to right, rgb(37, 99, 235), rgb(59, 130, 246));
+    transform: translateY(-2px);
+}
+
+/* Price cards */
+.price-info-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+@media (min-width: 768px) {
+    .price-info-container {
+        flex-direction: row;
+    }
+}
+
+.price-card {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.price-card:hover {
+    transform: translateY(-4px);
+}
+
+.price-card h3 {
+    font-size: 1.25rem;
+    color: rgb(75, 85, 99);
+    margin-bottom: 1rem;
+}
+
+.price-value {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: rgb(59, 130, 246);
+}
+
+/* Stat cards */
+.prediction-stats {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+@media (min-width: 768px) {
+    .prediction-stats {
+        flex-direction: row;
+    }
+}
+
+.stat-card {
+    flex: 1;
+    background-color: white;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    min-width: 200px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+}
+
+.stat-card h4 {
+    font-size: 1.125rem;
+    color: rgb(75, 85, 99);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: rgb(17, 24, 39);
+}
+
+/* Chart container */
+.chart-container {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    height: 500px;
+}
+
+/* States */
+.positive-value {
+    color: rgb(22, 163, 74);
+}
+
+.negative-value {
+    color: rgb(220, 38, 38);
+}
+
+.error-state {
+    color: rgb(239, 68, 68);
+    font-style: italic;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 4px solid rgb(229, 231, 235);
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-top-color: rgb(59, 130, 246);
     animation: spin 1s linear infinite;
- }
- 
- @keyframes spin {
-    to { transform: rotate(360deg); }
- }
+}
+
+@keyframes spin {
+    to { 
+        transform: rotate(360deg);
+    }
+}
