@@ -2,6 +2,14 @@
 {% block content %}
 
 <div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">자산입출금 관리</h2>
+            <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900">
+                <span>&larr; 돌아가기</span>
+            </a>
+        </div>
+        
     <div class="grid grid-cols-12 gap-6">
         <!-- 자산 현황 섹션 -->
         <div class="col-span-4">
@@ -18,11 +26,23 @@
                     <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <h3 class="text-sm font-bold mb-2">테스트용 실계좌 입금</h3>
                         <div class="space-y-2">
-                            <div class="text-sm text-gray-600">실계좌: {{ real_account.account_id }}</div>
-                            <div class="text-sm mb-2">현재 잔액: {{ real_account.balance|floatformat:0 }}원</div>
+                            <div class="mb-4">
+                                <label class="block text-sm text-gray-600 mb-2">입금할 계좌 선택</label>
+                                <select id="testDepositAccountSelect" class="w-full p-2 border rounded">
+                                    {% for account in real_accounts %}
+                                    <option value="{{ account.account_id }}">
+                                        {{ account.bank_name }} {{ account.account_id }}
+                                        (잔액: {{ account.balance|floatformat:0 }}원)
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                             <input type="number" id="testDepositAmount" 
-                                   class="w-full p-2 border rounded"
-                                   placeholder="입금할 금액">
+                                class="w-full p-2 border rounded"
+                                placeholder="입금할 금액">
+                            <div class="text-xs text-gray-500 mt-1">
+                                거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
+                            </div>
                             <button onclick="processTestDeposit()"
                                     class="w-full py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
                                 입금하기
@@ -103,15 +123,6 @@
         </div>
     </div>
 
-    <!-- 대시보드 버튼 -->
-    <div class="mt-6 text-center">
-        <a href="{% url 'dashboard' %}" 
-           class="inline-block bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
-            대시보드로 돌아가기
-        </a>
-    </div>
-</div>
-
 <!-- 입금 모달 -->
 <div id="depositModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
     <div class="modal-container bg-white w-96 mx-auto mt-20 rounded-lg shadow-lg">
@@ -123,22 +134,25 @@
             <form id="depositForm">
                 {% csrf_token %}
                 <input type="hidden" name="transfer_type" value="DEPOSIT">
-                <input type="hidden" name="from_account" value="{{ real_account.account_id }}">
                 
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">출금할 실계좌</label>
-                    <div class="p-2 border rounded bg-gray-50">
-                        {{ real_account.bank_name }} {{ real_account.account_id }}
-                        <div class="text-sm text-gray-600">
-                            잔액: {{ real_account.balance|floatformat:0 }}원
-                        </div>
-                    </div>
+                    <label class="block text-sm mb-2">출금할 실계좌 선택</label>
+                    <select name="from_account" class="w-full p-2 border rounded" required>
+                        {% for account in real_accounts %}
+                        <option value="{{ account.account_id }}" data-balance="{{ account.balance }}">
+                            {{ account.bank_name }} {{ account.account_id }}
+                            (잔액: {{ account.balance|floatformat:0 }}원)
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-sm mb-2">금액</label>
                     <input type="number" name="amount" class="w-full p-2 border rounded" required>
-                    <div class="text-xs text-gray-500 mt-1">최대 거래 한도: 1천만원</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-4">
@@ -163,13 +177,16 @@
             <form id="withdrawForm">
                 {% csrf_token %}
                 <input type="hidden" name="transfer_type" value="WITHDRAWAL">
-                <input type="hidden" name="to_account" value="{{ real_account.account_id }}">
 
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">입금받을 실계좌</label>
-                    <div class="p-2 border rounded bg-gray-50">
-                        {{ real_account.bank_name }} {{ real_account.account_id }}
-                    </div>
+                    <label class="block text-sm mb-2">입금받을 실계좌 선택</label>
+                    <select name="to_account" class="w-full p-2 border rounded" required>
+                        {% for account in real_accounts %}
+                        <option value="{{ account.account_id }}">
+                            {{ account.bank_name }} {{ account.account_id }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <div class="mb-4">
@@ -178,7 +195,7 @@
                     <div class="text-xs text-gray-500 mt-1">
                         가용 잔액: {{ virtual_account.balance|floatformat:0 }}원
                         <br>
-                        최대 거래 한도: 1천만원
+                        거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
                     </div>
                 </div>
 
@@ -265,6 +282,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
+    // 테스트용 실계좌 입금 처리
+    window.processTestDeposit = function() {
+        const accountSelect = document.getElementById('testDepositAccountSelect');
+        const amount = document.getElementById('testDepositAmount').value;
+        
+        if (!amount || amount <= 0) {
+            showToast('올바른 금액을 입력해주세요.', 'error');
+            return;
+        }
+
+        fetch('/api/test/deposit/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `amount=${amount}&account_id=${accountSelect.value}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('입금이 완료되었습니다.', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('처리 중 오류가 발생했습니다.', 'error');
+        });
+    }
+
     // 기존 입출금 폼 제출 처리
     async function handleTransfer(formData) {
         try {
@@ -298,50 +350,61 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 테스트용 실계좌 입금 처리
-    window.processTestDeposit = function() {
-        const amount = document.getElementById('testDepositAmount').value;
-        if (!amount || amount <= 0) {
-            showToast('올바른 금액을 입력해주세요.', 'error');
-            return;
-        }
-
-        fetch('/api/test/deposit/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: `amount=${amount}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('입금이 완료되었습니다.', 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 3000);
-            } else {
-              showToast(data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('처리 중 오류가 발생했습니다.', 'error');
-        });
-    }
-
     const depositForm = document.getElementById('depositForm');
     const withdrawForm = document.getElementById('withdrawForm');
     const depositBtn = document.getElementById('depositBtn');
     const withdrawBtn = document.getElementById('withdrawBtn');
 
+    // 입금 폼 제출 처리
     depositBtn.addEventListener('click', () => {
-        handleTransfer(new FormData(depositForm));
+        const form = depositForm;
+        const amountInput = form.querySelector('input[name="amount"]');
+        const fromAccountSelect = form.querySelector('select[name="from_account"]');
+        const selectedOption = fromAccountSelect.selectedOptions[0];
+        const accountBalance = parseFloat(selectedOption.dataset.balance);
+        const amount = parseFloat(amountInput.value);
+
+        if (!amount || amount <= 0) {
+            showToast('올바른 금액을 입력해주세요.', 'error');
+            return;
+        }
+
+        if (amount > accountBalance) {
+            showToast('실계좌 잔액이 부족합니다.', 'error');
+            return;
+        }
+
+        if (amount > 10000000) {
+            showToast('최대 거래 한도(1천만원)를 초과했습니다.', 'error');
+            return;
+        }
+
+        handleTransfer(new FormData(form));
     });
 
+    // 출금 폼 제출 처리
     withdrawBtn.addEventListener('click', () => {
-        handleTransfer(new FormData(withdrawForm));
+        const form = withdrawForm;
+        const amountInput = form.querySelector('input[name="amount"]');
+        const virtualAccountBalance = parseFloat('{{ virtual_account.balance }}');
+        const amount = parseFloat(amountInput.value);
+
+        if (!amount || amount <= 0) {
+            showToast('올바른 금액을 입력해주세요.', 'error');
+            return;
+        }
+
+        if (amount > virtualAccountBalance) {
+            showToast('가상계좌 잔액이 부족합니다.', 'error');
+            return;
+        }
+
+        if (amount > 10000000) {
+            showToast('최대 거래 한도(1천만원)를 초과했습니다.', 'error');
+            return;
+        }
+
+        handleTransfer(new FormData(form));
     });
 });
 </script>
