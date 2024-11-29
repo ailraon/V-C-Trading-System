@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container-fluid px-4 py-8"> <!-- container-fluid로 변경하여 더 넓은 너비 확보 -->
+<div class="container-fluid px-4 py-8">
     <div class="grid grid-cols-12 gap-6">
         <!-- 계좌 정보 섹션 -->
-        <div class="col-span-2"> <!-- col-span-4에서 2로 변경하여 거래내역 섹션에 더 많은 공간 할당 -->
+        <div class="col-span-2">
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-lg font-bold mb-4">계좌 정보</h2>
                 <div class="space-y-4">
@@ -20,8 +20,8 @@
             </div>
         </div>
 
-        <!-- 거래내역 섹션 -->
-        <div class="col-span-10"> <!-- col-span-8에서 10으로 변경 -->
+        <!-- 메인 콘텐츠 섹션 -->
+        <div class="col-span-10">
             <div class="bg-white rounded-lg shadow-md p-6">
                 <!-- 제목과 뒤로가기 버튼 -->
                 <div class="flex justify-between items-center mb-6">
@@ -30,85 +30,192 @@
                         <span>&larr; 돌아가기</span>
                     </a>
                 </div>
-                <!-- 탭 버튼 -->
-                <div class="flex space-x-4 mb-6">
-                    <button class="px-4 py-2 rounded {% if transaction_type == 'sell' %}bg-blue-500 text-white{% endif %}"
-                            onclick="window.location.href='?type=sell'">
-                        매도 거래내역
-                    </button>
-                    <button class="px-4 py-2 rounded {% if transaction_type == 'buy' %}bg-blue-500 text-white{% endif %}"
-                            onclick="window.location.href='?type=buy'">
-                        매수 거래내역
-                    </button>
-                </div>
 
-                <!-- 거래내역 테이블 -->
-                <div class="overflow-x-auto">
-                    <table class="w-full table-auto">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="px-6 py-3 text-left">거래시간</th>
-                                <th class="px-6 py-3 text-left">가상화폐</th>
-                                <th class="px-6 py-3 text-right">거래량</th>
-                                {% if transaction_type == 'sell' %}
-                                    <th class="px-6 py-3 text-right">매도가</th>
-                                    <th class="px-6 py-3 text-right">실현손익</th>
-                                {% else %}
-                                    <th class="px-6 py-3 text-right">현재가</th>
-                                    <th class="px-6 py-3 text-right">평가액</th>
-                                    <th class="px-6 py-3 text-right">총 거래금액</th>
-                                    <th class="px-6 py-3 text-right">수익률</th>
-                                {% endif %}
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {% for trans in transactions %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">{{ trans.transaction_time|date:"Y-m-d H:i" }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="font-medium">{{ trans.crypto.crypto_name }}</div>
-                                    <div class="text-sm text-gray-500">{{ trans.crypto.crypto_type }}</div>
-                                </td>
-                                <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.trade_volume|floatformat:8 }}</td>
-                                {% if transaction_type == 'sell' %}
-                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                                    <td class="px-6 py-4 text-right whitespace-nowrap {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
-                                        {% if trans.rate_of_return >= 0 %}+{% endif %}{{ trans.rate_of_return|floatformat:2 }}%
-                                    </td>
-                                {% else %}
-                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.crypto.crypto_price|floatformat:0 }} 원</td>
-                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.valuation|floatformat:0 }} 원</td>
-                                    <td class="px-6 py-4 text-right whitespace-nowrap">{{ trans.total_trade_amount|floatformat:0 }} 원</td>
-                                    <td class="px-6 py-4 text-right whitespace-nowrap {% if trans.rate_of_return >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
-                                        {% if trans.rate_of_return >= 0 %}+{% endif %}{{ trans.rate_of_return|floatformat:2 }}%
-                                    </td>
-                                {% endif %}
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="{% if transaction_type == 'sell' %}5{% else %}7{% endif %}" class="px-6 py-4 text-center">
-                                    {% if transaction_type == 'sell' %}매도{% else %}매수{% endif %} 내역이 없습니다.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 페이지네이션 -->
-                {% if transactions.paginator.num_pages > 1 %}
-                <div class="flex justify-center mt-4">
-                    <div class="flex space-x-2">
-                        {% for i in transactions.paginator.page_range %}
-                        <a href="?page={{ i }}&type={{ transaction_type }}" 
-                           class="px-3 py-2 rounded {% if transactions.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
-                            {{ i }}
+                <!-- 메인 탭 -->
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex space-x-8">
+                        <a href="#" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm {% if active_tab == 'portfolio' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}" 
+                           data-tab="portfolio">
+                            투자내역
                         </a>
-                        {% endfor %}
+                        <a href="#" class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm {% if active_tab == 'history' %}border-blue-500 text-blue-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}"
+                           data-tab="history">
+                            거래내역
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- 투자내역 탭 콘텐츠 -->
+                <div id="portfolio-content" class="tab-content {% if active_tab != 'portfolio' %}hidden{% endif %}">
+                    <!-- 투자 요약 정보 -->
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">총 투자금액</div>
+                            <div class="text-xl font-bold">{{ total_investment|floatformat:0 }} 원</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">총 평가금액</div>
+                            <div class="text-xl font-bold">{{ total_valuation|floatformat:0 }} 원</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">총 평가손익</div>
+                            <div class="text-xl font-bold {% if total_profit >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                {{ total_profit|floatformat:0 }} 원
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-500">총 수익률</div>
+                            <div class="text-xl font-bold {% if total_profit_rate >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                {% if total_profit_rate >= 0 %}+{% endif %}{{ total_profit_rate|floatformat:2 }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 보유 자산 목록 -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-6 py-3 text-left">가상화폐</th>
+                                    <th class="px-6 py-3 text-right">보유수량</th>
+                                    <th class="px-6 py-3 text-right">평균매수가</th>
+                                    <th class="px-6 py-3 text-right">현재가</th>
+                                    <th class="px-6 py-3 text-right">총 매수금액</th>
+                                    <th class="px-6 py-3 text-right">평가금액</th>
+                                    <th class="px-6 py-3 text-right">평가손익</th>
+                                    <th class="px-6 py-3 text-right">수익률</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for portfolio in portfolios %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">{{ portfolio.crypto.crypto_name }}</div>
+                                        <div class="text-sm text-gray-500">{{ portfolio.crypto.crypto_type }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">{{ portfolio.total_quantity|floatformat:8 }}</td>
+                                    <td class="px-6 py-4 text-right">{{ portfolio.avg_buy_price|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right">{{ portfolio.crypto.crypto_price|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right">{{ portfolio.total_investment|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right">{{ portfolio.current_valuation|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right {% if portfolio.profit >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                        {% if portfolio.profit >= 0 %}+{% endif %}{{ portfolio.profit|floatformat:0 }} 원
+                                    </td>
+                                    <td class="px-6 py-4 text-right {% if portfolio.profit_rate >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                                        {% if portfolio.profit_rate >= 0 %}+{% endif %}{{ portfolio.profit_rate|floatformat:2 }}%
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="px-6 py-4 text-center">보유중인 가상화폐가 없습니다.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                {% endif %}
+
+                <!-- 거래내역 탭 -->
+                <div id="history-content" class="tab-content {% if active_tab != 'history' %}hidden{% endif %}">
+                    <!-- 매도/매수 선택 버튼 -->
+                    <div class="flex space-x-4 mb-6">
+                        <button class="px-4 py-2 rounded {% if transaction_type == 'sell' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" onclick="window.location.href='?tab=history&type=sell'">매도 거래내역</button>
+                        <button class="px-4 py-2 rounded {% if transaction_type == 'buy' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" onclick="window.location.href='?tab=history&type=buy'">매수 거래내역</button>
+                    </div>
+
+                    <!-- 거래내역 테이블 -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-6 py-3 text-left">거래시간</th>
+                                    <th class="px-6 py-3 text-left">가상화폐</th>
+                                    <th class="px-6 py-3 text-right">거래수량</th>
+                                    <th class="px-6 py-3 text-right">거래단가</th>
+                                    {% if transaction_type == 'sell' %}
+                                    <th class="px-6 py-3 text-right">매도금액</th>
+                                    {% else %}
+                                    <th class="px-6 py-3 text-right">매수금액</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for order in orders %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">{{ order.executed_time|date:"Y-m-d H:i" }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">{{ order.crypto.crypto_name }}</div>
+                                        <div class="text-sm text-gray-500">{{ order.crypto.crypto_type }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">{{ order.order_quantity|floatformat:8 }}</td>
+                                    <td class="px-6 py-4 text-right">{{ order.order_price|floatformat:0 }} 원</td>
+                                    <td class="px-6 py-4 text-right">{{ order.total_amount|floatformat:0 }} 원</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-4 text-center">
+                                        {% if transaction_type == 'sell' %}매도{% else %}매수{% endif %} 거래내역이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 페이지네이션 -->
+                    {% if orders.paginator.num_pages > 1 %}
+                    <div class="flex justify-center mt-4">
+                        <div class="flex space-x-2">
+                            {% for i in orders.paginator.page_range %}
+                            <a href="?tab=history&type={{ transaction_type }}&page={{ i }}" class="px-3 py-2 rounded {% if orders.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
+                                {{ i }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
+</div>
+
+
+<!-- JavaScript for tab handling -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active classes
+            tabBtns.forEach(b => {
+                b.classList.remove('border-blue-500', 'text-blue-600');
+                b.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Hide all contents
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Show selected content
+            const targetTab = btn.getAttribute('data-tab');
+            document.getElementById(`${targetTab}-content`).classList.remove('hidden');
+            
+            // Update URL without page reload
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', targetTab);
+            window.history.pushState({}, '', url);
+            
+            // Add active class to clicked button
+            btn.classList.remove('border-transparent', 'text-gray-500');
+            btn.classList.add('border-blue-500', 'text-blue-600');
+        });
+    });
+});
+</script>
 {% endblock %}

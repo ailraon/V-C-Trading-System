@@ -155,31 +155,49 @@
     </div>
 </div>
 
-<!-- 회원 탈퇴 모달 -->
 <div id="withdrawalModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
     <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
         <h3 class="text-lg font-medium mb-4">회원 탈퇴</h3>
-        <p class="text-gray-600 mb-4">
-            정말로 탈퇴하시겠습니까? 탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
-        </p>
-        <form method="POST" class="space-y-4">
+        
+        <p class="mb-4">정말로 탈퇴하시겠습니까? 탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+        
+        <form method="POST" action="{% url 'user_info_management' %}">
             {% csrf_token %}
-            <input type="hidden" name="action" value="withdraw">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">비밀번호 확인</label>
-                <input type="password" name="withdrawal_password" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+            <input type="hidden" name="form_type" value="withdraw">
+            
+            <div class="mb-4">
+                <label for="withdrawal_password" class="block text-sm font-medium text-gray-700">비밀번호 확인</label>
+                <input type="password" 
+                       id="withdrawal_password" 
+                       name="withdrawal_password" 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                       required>
             </div>
+            
             <div class="flex justify-end space-x-4">
-                <button type="button" onclick="closeWithdrawalModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                <button type="button" 
+                        onclick="closeWithdrawalModal()"
+                        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
                     취소
                 </button>
-                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                <button type="submit"
+                        class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
                     회원 탈퇴
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function openWithdrawalModal() {
+    document.getElementById('withdrawalModal').classList.remove('hidden');
+}
+
+function closeWithdrawalModal() {
+    document.getElementById('withdrawalModal').classList.add('hidden');
+}
+</script>
 
 <!-- 계좌 추가 모달 -->
 <div id="addAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -193,11 +211,12 @@
                 <label class="block text-sm font-medium text-gray-700">은행 선택</label>
                 <select name="bank_name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
                     <option value="">은행을 선택하세요</option>
-                    <option value="KB국민은행">KB국민은행</option>
-                    <option value="신한은행">신한은행</option>
+                    <option value="KB국민은행">국민은행</option>
                     <option value="우리은행">우리은행</option>
+                    <option value="NH농협은행">농협은행</option>
+                    <option value="신한은행">신한은행</option>
                     <option value="하나은행">하나은행</option>
-                    <option value="NH농협은행">NH농협은행</option>
+                    <option value="IBK기업은행">기업은행</option>
                 </select>
             </div>
             

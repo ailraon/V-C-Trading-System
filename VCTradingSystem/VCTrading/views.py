@@ -11,7 +11,7 @@ from datetime import datetime
 import logging
 import re  # re 모듈 추가
 from decimal import Decimal
-from .models import UserInfo, InvestmentHistory, TransferHistory, BankAccount, VirtualAccount, CryptoInfo, OrderInfo
+from .models import UserInfo, TransferHistory, BankAccount, VirtualAccount, CryptoInfo, OrderInfo, InvestmentPortfolio
 logger = logging.getLogger(__name__)
 
 '''
@@ -166,27 +166,41 @@ class User:
         """회원 탈퇴 처리"""
         try:
             with transaction.atomic():
-                user = UserInfo.objects.get(user_id=user_id)
+                user = UserInfo.objects.select_related(
+                    'account', 
+                    'virtual_account'
+                ).get(user_id=user_id)
 
                 # 비밀번호 확인
                 if not check_password(password, user.user_password):
                     return False, "비밀번호가 일치하지 않습니다."
 
                 # 관련된 거래 내역 삭제
-                InvestmentHistory.objects.filter(user=user).delete()
+                InvestmentPortfolio.objects.filter(user=user).delete()
                 TransferHistory.objects.filter(user=user).delete()
 
-                # 계좌 정보 삭제
-                virtual_account = user.virtual_account
-                bank_account = user.account
-            
-                # 사용자 삭제 (cascade로 인해 user가 참조하는 레코드도 삭제됨)
+                # 사용자의 모든 실계좌 조회 및 삭제
+                BankAccount.objects.filter(
+                    Q(account_id=user.account_id) |
+                    Q(user_id=user_id)
+                ).delete()
+
+                # 가상계좌 삭제
+                if user.virtual_account:
+                    user.virtual_account.delete()
+
+                # 사용자 삭제
                 user.delete()
-                virtual_account.delete()
-                bank_account.delete()
+
+                # 모든 세션 삭제
+                Session.objects.filter(
+                    session_data__contains=user_id
+                ).delete()
 
                 return True, "회원 탈퇴가 완료되었습니다."
-            
+
+        except UserInfo.DoesNotExist:
+            return False, "사용자 정보를 찾을 수 없습니다."
         except Exception as e:
             logger.error(f"User withdrawal error: {str(e)}")
             return False, "회원 탈퇴 처리 중 오류가 발생했습니다."
@@ -403,7 +417,9 @@ class User:
 
             if request.method == 'POST':
                 form_type = request.POST.get('form_type')
-                
+                success = False  # Initialize success variable
+                message = ""    # Initialize message variable
+
                 if form_type == 'user_info':
                     # 기존 사용자 정보 수정 처리
                     update_data = {
@@ -431,6 +447,24 @@ class User:
                     account_id = request.POST.get('account_id')
                     success, message = self.delete_bank_account(user_id, account_id)
 
+                elif form_type == 'withdraw':  
+                    # 회원 탈퇴 처리
+                    password = request.POST.get('withdrawal_password')
+                    if not password:
+                        messages.error(request, '비밀번호를 입력해주세요.')
+                        return redirect(f"{reverse('user_info_management')}?tab=user-info")
+
+                    success, message = self.withdraw_user(user_id, password)
+
+                    if success:
+                        # 세션 삭제
+                        request.session.flush()
+                        messages.success(request, message)
+                        return redirect('login')
+                    else:
+                        messages.error(request, message)
+                        return redirect(f"{reverse('user_info_management')}?tab=user-info")
+
                 if success:
                     messages.success(request, message)
                 else:
@@ -449,14 +483,13 @@ class User:
                 'real_accounts': real_accounts,
                 'virtual_account': virtual_account,
             }
-            
+
             return render(request, 'management/user_info.html', context)
 
         except Exception as e:
             logger.error(f"User info management error: {str(e)}")
             messages.error(request, "사용자 정보 처리 중 오류가 발생했습니다.")
             return redirect('dashboard')
-        
     
     
 class InvestmentManager:
@@ -464,22 +497,51 @@ class InvestmentManager:
     def __init__(self):
         pass
 
-    def check_buy_transactions(self, user):
-        """매수 거래내역 확인"""
+    def get_portfolio(self, user):
+        """사용자의 투자 포트폴리오 조회"""
         try:
-            return InvestmentHistory.objects.filter(user=user, transaction_type='BUY')
+            portfolios = InvestmentPortfolio.objects.filter(
+                user=user
+            ).select_related('crypto')
+
+            total_investment = 0
+            total_valuation = 0
+
+            for portfolio in portfolios:
+                # 현재 평가금액 계산
+                portfolio.current_valuation = portfolio.total_quantity * portfolio.crypto.crypto_price
+                # 평가손익 계산
+                portfolio.profit = portfolio.current_valuation - portfolio.total_investment
+                # 수익률 계산
+                portfolio.profit_rate = (portfolio.profit / portfolio.total_investment * 100) if portfolio.total_investment > 0 else 0
+
+                total_investment += portfolio.total_investment
+                total_valuation += portfolio.current_valuation
+
+            summary = {
+                'total_investment': total_investment,
+                'total_valuation': total_valuation,
+                'total_profit': total_valuation - total_investment,
+                'total_profit_rate': ((total_valuation - total_investment) / total_investment * 100) 
+                                   if total_investment > 0 else 0
+            }
+
+            return portfolios, summary
         except Exception as e:
-            logger.error(f"Buy transactions check error: {str(e)}")
+            logger.error(f"Portfolio retrieval error: {str(e)}")
+            return None, None
+
+    def get_order_history(self, user, order_type):
+        """매수/매도 거래내역 조회"""
+        try:
+            return OrderInfo.objects.filter(
+                user=user,
+                order_type=order_type.upper()
+            ).select_related('crypto').order_by('-executed_time')
+        except Exception as e:
+            logger.error(f"Order history retrieval error: {str(e)}")
             return None
 
-    def check_sell_transactions(self, user):
-        """매도 거래내역 확인"""
-        try:
-            return InvestmentHistory.objects.filter(user=user, transaction_type='SELL')
-        except Exception as e:
-            logger.error(f"Sell transactions check error: {str(e)}")
-            return None
-    # ==========InvestmentManager Class 뷰 처리 메서드=========
     def handle_investment_management(self, request, trading_system):
         """투자내역 관리 뷰 처리"""
         try:
@@ -488,27 +550,41 @@ class InvestmentManager:
             if not user:
                 return redirect('login')
             
-            page = request.GET.get('page', 1)
+            active_tab = request.GET.get('tab', 'portfolio')
             transaction_type = request.GET.get('type', 'sell')
-            
-            transactions = None
-            if transaction_type == 'buy':
-                transactions = self.check_buy_transactions(user)
-            else:
-                transactions = self.check_sell_transactions(user)
-            
-            paginator = Paginator(transactions, 10)
-            current_page = paginator.get_page(page)
-            
+            page = request.GET.get('page', 1)
+
             context = {
                 'user': user,
-                'transactions': current_page,
-                'transaction_type': transaction_type
+                'active_tab': active_tab
             }
+
+            if active_tab == 'portfolio':
+                # 투자 포트폴리오 조회
+                portfolios, summary = self.get_portfolio(user)
+                context.update({
+                    'portfolios': portfolios,
+                    'total_investment': summary['total_investment'],
+                    'total_valuation': summary['total_valuation'],
+                    'total_profit': summary['total_profit'],
+                    'total_profit_rate': summary['total_profit_rate']
+                })
+            else:
+                # 거래내역 조회
+                orders = self.get_order_history(user, transaction_type)
+                paginator = Paginator(orders, 10)
+                current_page = paginator.get_page(page)
                 
+                context.update({
+                    'orders': current_page,
+                    'transaction_type': transaction_type
+                })
+
             return render(request, 'management/investment.html', context)
+            
         except Exception as e:
             logger.error(f"Investment management error: {str(e)}")
+            messages.error(request, "투자내역 조회 중 오류가 발생했습니다.")
             return redirect('dashboard')
 
 
@@ -742,7 +818,8 @@ class VCTradingSystem:
                 bank_account = BankAccount.objects.create(
                     account_id=user_data['account_id'],
                     bank_name=user_data['bank_name'],
-                    balance=0.00
+                    balance=0.00,
+                    user_id=user_data['user_id']
                 )
 
                 # 가상 계좌 생성

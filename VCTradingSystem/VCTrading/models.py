@@ -50,32 +50,33 @@ class CryptoInfo(models.Model):
         db_table = 'Crypto_Info'
 
 class OrderInfo(models.Model):
-    order_id = models.CharField(max_length=20, primary_key=True)
+    order_id = models.CharField(max_length=25, primary_key=True)
+    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')  # 사용자 정보 추가
     crypto = models.ForeignKey(CryptoInfo, on_delete=models.CASCADE, db_column='crypto_id')
-    order_date = models.DateField()
-    order_price = models.DecimalField(max_digits=18, decimal_places=2)
-    order_cap = models.IntegerField()
+    order_type = models.CharField(max_length=10)  # 'BUY' or 'SELL'
+    order_price = models.DecimalField(max_digits=18, decimal_places=8)  # 주문 가격
+    order_quantity = models.DecimalField(max_digits=18, decimal_places=8)  # 주문 수량
+    total_amount = models.DecimalField(max_digits=18, decimal_places=2)  # 총 거래금액
+    order_status = models.CharField(max_length=20, default='COMPLETED')  # 주문 상태
+    executed_time = models.DateTimeField(auto_now_add=True)  # 체결 시간
+    market_price = models.DecimalField(max_digits=18, decimal_places=8)  # 체결 당시 시장가
 
     class Meta:
         db_table = 'Order_Info'
 
-class InvestmentHistory(models.Model):
-    transaction_id = models.CharField(max_length=20, primary_key=True)
+class InvestmentPortfolio(models.Model):
+    portfolio_id = models.CharField(max_length=25, primary_key=True)
     user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')
-    order = models.ForeignKey(OrderInfo, on_delete=models.CASCADE, db_column='order_id')
     crypto = models.ForeignKey(CryptoInfo, on_delete=models.CASCADE, db_column='crypto_id')
-    transaction_type = models.CharField(max_length=10)
-    trade_volume = models.DecimalField(max_digits=18, decimal_places=8)
-    total_trade_amount = models.DecimalField(max_digits=18, decimal_places=2)
-    valuation = models.DecimalField(max_digits=18, decimal_places=2)
-    rate_of_return = models.DecimalField(max_digits=8, decimal_places=2)
-    transaction_time = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=10, default='COMPLETED')
-    account = models.ForeignKey(BankAccount, on_delete=models.SET_NULL, null=True, db_column='account_id')
-    virtual_account = models.ForeignKey(VirtualAccount, on_delete=models.SET_NULL, null=True, db_column='virtual_account_id')
+    total_quantity = models.DecimalField(max_digits=18, decimal_places=8)  # 보유 수량
+    avg_buy_price = models.DecimalField(max_digits=18, decimal_places=8)  # 평균 매수가
+    total_investment = models.DecimalField(max_digits=18, decimal_places=2)  # 총 매수금액
+    first_buy_date = models.DateTimeField()  # 최초 매수일
+    last_updated = models.DateTimeField(auto_now=True)  # 마지막 업데이트 시간
 
     class Meta:
-        db_table = 'Investment_History'
+        db_table = 'Investment_Portfolio'
+        unique_together = ('user', 'crypto')  # 사용자별 암호화폐는 유니크해야 함
 
 class TransferHistory(models.Model):
     transfer_id = models.CharField(max_length=20, primary_key=True)
