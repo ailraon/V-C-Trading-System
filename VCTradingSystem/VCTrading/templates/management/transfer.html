@@ -1,127 +1,135 @@
 {% extends "base.html" %}
 {% block content %}
-
 <div class="container mx-auto px-4 py-8">
     <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold">자산입출금 관리</h2>
-            <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900">
-                <span>&larr; 돌아가기</span>
-            </a>
+            <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900">← 돌아가기</a>
         </div>
-        
-    <div class="grid grid-cols-12 gap-6">
-        <!-- 자산 현황 섹션 -->
-        <div class="col-span-4">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-lg font-bold mb-4">자산 현황</h2>
-                <div class="space-y-4">
-                    <div>
-                        <div class="text-sm text-gray-600">가상계좌</div>
-                        <div>{{ virtual_account.virtual_account_id }}</div>
-                        <div class="balance-display">{{ virtual_account.balance|floatformat:0 }} 원</div>
-                    </div>
 
-                    <!-- 테스트용 실계좌 입금 폼 -->
-                    <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h3 class="text-sm font-bold mb-2">테스트용 실계좌 입금</h3>
-                        <div class="space-y-2">
-                            <div class="mb-4">
-                                <label class="block text-sm text-gray-600 mb-2">입금할 계좌 선택</label>
-                                <select id="testDepositAccountSelect" class="w-full p-2 border rounded">
-                                    {% for account in real_accounts %}
-                                    <option value="{{ account.account_id }}">
-                                        {{ account.bank_name }} {{ account.account_id }}
-                                        (잔액: {{ account.balance|floatformat:0 }}원)
-                                    </option>
-                                    {% endfor %}
-                                </select>
+        <div class="grid grid-cols-12 gap-6">
+            <!-- 자산 현황 섹션 -->
+            <div class="col-span-5">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-lg font-bold mb-4">자산 현황</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-sm text-gray-600">가상계좌</div>
+                            <div>{{ virtual_account.virtual_account_id }}</div>
+                            <div class="balance-display">{{ virtual_account.balance|floatformat:0 }} 원</div>
+                        </div>
+
+                        <!-- 테스트용 입금 섹션 -->
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h3 class="text-sm font-bold mb-2">실계좌 입금</h3>
+                            <div class="space-y-2">
+                                <div class="mb-4">
+                                    <select id="testDepositAccountSelect" class="w-full p-2 border rounded">
+                                        {% for account in real_accounts %}
+                                        <option value="{{ account.account_id }}" data-balance="{{ account.balance }}">
+                                            {{ account.bank_name }} {{ account.account_id }} (잔액: {{ account.balance|floatformat:0 }}원)
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <input type="number" id="testDepositAmount" class="w-full p-2 border rounded" placeholder="입금액">
+                                <div class="text-xs text-gray-500 mt-1">
+                                    거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
+                                </div>
+                                <button onclick="processTestDeposit()" class="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    입금하기
+                                </button>
                             </div>
-                            <input type="number" id="testDepositAmount" 
-                                class="w-full p-2 border rounded"
-                                placeholder="입금할 금액">
-                            <div class="text-xs text-gray-500 mt-1">
-                                거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
-                            </div>
-                            <button onclick="processTestDeposit()"
-                                    class="w-full py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-                                입금하기
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 거래내역 섹션 -->
-        <div class="col-span-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <!-- 입출금 버튼 -->
-                <div class="flex space-x-4 mb-6">
-                    <button id="showDepositBtn" class="px-4 py-2 bg-blue-500 text-white rounded">입금</button>
-                    <button id="showWithdrawBtn" class="px-4 py-2 bg-gray-500 text-white rounded">출금</button>
-                </div>
+            <!-- 거래 내역 섹션 -->
+            <div class="col-span-7">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <!-- 입출금 버튼 -->
+                    <div class="flex space-x-4 mb-6">
+                        <button id="showDepositBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            입금
+                        </button>
+                        <button id="showWithdrawBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            출금
+                        </button>
+                    </div>
 
-                <!-- 필터링 버튼 -->
-                <div class="flex space-x-4 mb-6">
-                    <button class="transaction-filter px-4 py-2 bg-blue-500 text-white rounded" data-type="all">전체</button>
-                    <button class="transaction-filter px-4 py-2 bg-gray-100 rounded" data-type="VIRTUAL">가상계좌</button>
-                    <button class="transaction-filter px-4 py-2 bg-gray-100 rounded" data-type="CRYPTO">가상화폐</button>
-                </div>
+                    <!-- 거래 유형 필터 -->
+                    <div class="flex space-x-4 mb-6">
+                        <button class="transaction-filter px-4 py-2 bg-blue-500 text-white rounded" data-type="all">
+                            전체
+                        </button>
+                        <button class="transaction-filter px-4 py-2 bg-gray-100 rounded" data-type="VIRTUAL">
+                            가상계좌
+                        </button>
+                        <button class="transaction-filter px-4 py-2 bg-gray-100 rounded" data-type="CRYPTO">
+                            가상화폐
+                        </button>
+                    </div>
 
-                <!-- 거래내역 목록 -->
-                <div class="space-y-4">
-                    {% for transfer in transfers %}
-                    <div class="transaction-item border-b pb-4" data-type="{{ transfer.transaction_type }}">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-medium">
-                                    {% if transfer.transfer_type == 'DEPOSIT' %}
-                                        {% if transfer.transaction_type == 'CRYPTO' %}
-                                            가상화폐 매도
+                    <!-- 거래 내역 목록 -->
+                    <div class="space-y-4">
+                        {% for transfer in transfers %}
+                        <div class="transaction-item border-b pb-4" data-type="{{ transfer.transaction_type }}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-medium">
+                                        {% if transfer.transfer_type == 'DEPOSIT' %}
+                                            {% if transfer.transaction_type == 'CRYPTO' %}
+                                                가상화폐 매도
+                                            {% else %}
+                                                가상계좌 입금
+                                            {% endif %}
                                         {% else %}
-                                            가상계좌 입금
+                                            {% if transfer.transaction_type == 'CRYPTO' %}
+                                                가상화폐 매수
+                                            {% else %}
+                                                가상계좌 출금
+                                            {% endif %}
                                         {% endif %}
-                                    {% else %}
-                                        {% if transfer.transaction_type == 'CRYPTO' %}
-                                            가상화폐 매수
-                                        {% else %}
-                                            가상계좌 출금
-                                        {% endif %}
-                                    {% endif %}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ transfer.from_account }} → {{ transfer.to_account }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ transfer.transfer_time|date:"Y.m.d H:i" }}
+                                    </div>
                                 </div>
-                                <div class="text-sm text-gray-500">{{ transfer.from_account }} → {{ transfer.to_account }}</div>
-                                <div class="text-sm text-gray-500">{{ transfer.transfer_time|date:"Y.m.d H:i" }}</div>
-                            </div>
-                            <div class="{% if transfer.transfer_type == 'DEPOSIT' %}text-blue-600{% else %}text-red-600{% endif %}">
-                                {% if transfer.transfer_type == 'DEPOSIT' %}+{% else %}-{% endif %}
-                                {{ transfer.amount|floatformat:0 }} 원
+                                <div class="{% if transfer.transfer_type == 'DEPOSIT' %}text-red-600{% else %}text-blue-600{% endif %}">
+                                    {% if transfer.transfer_type == 'DEPOSIT' %}+{% else %}-{% endif %}
+                                    {{ transfer.amount|floatformat:0 }} 원
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4 text-gray-500">
-                        거래 내역이 없습니다.
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- 페이지네이션 -->
-                {% if transfers.paginator.num_pages > 1 %}
-                <div class="flex justify-center mt-4">
-                    <div class="flex space-x-2">
-                        {% for i in transfers.paginator.page_range %}
-                        <a href="?page={{ i }}" 
-                           class="px-3 py-2 rounded {% if transfers.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
-                            {{ i }}
-                        </a>
+                        {% empty %}
+                        <div class="text-center py-4 text-gray-500">
+                            거래 내역이 없습니다.
+                        </div>
                         {% endfor %}
                     </div>
+
+                    <!-- 페이지네이션 -->
+                    {% if transfers.paginator.num_pages > 1 %}
+                    <div class="flex justify-center mt-4">
+                        <div class="flex space-x-2">
+                            {% for i in transfers.paginator.page_range %}
+                                <a href="?page={{ i }}" 
+                                   class="px-3 py-2 rounded {% if transfers.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
+                                    {{ i }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
+</div>
 
 <!-- 입금 모달 -->
 <div id="depositModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
@@ -129,35 +137,31 @@
         <div class="p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold">실계좌에서 가상계좌로 입금하기</h3>
-                <button class="modal-close">×</button>
+                <button class="modal-close text-gray-500 hover:text-gray-700">×</button>
             </div>
             <form id="depositForm">
                 {% csrf_token %}
                 <input type="hidden" name="transfer_type" value="DEPOSIT">
-                
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">출금할 실계좌 선택</label>
-                    <select name="from_account" class="w-full p-2 border rounded" required>
+                    <label class="block mb-2 text-sm font-medium">출금할 실계좌 선택</label>
+                    <select name="from_account" class="w-full p-2 border rounded">
                         {% for account in real_accounts %}
                         <option value="{{ account.account_id }}" data-balance="{{ account.balance }}">
-                            {{ account.bank_name }} {{ account.account_id }}
-                            (잔액: {{ account.balance|floatformat:0 }}원)
+                            {{ account.bank_name }} {{ account.account_id }} (잔액: {{ account.balance|floatformat:0 }}원)
                         </option>
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">금액</label>
-                    <input type="number" name="amount" class="w-full p-2 border rounded" required>
+                    <label class="block mb-2 text-sm font-medium">금액</label>
+                    <input type="number" name="amount" class="w-full p-2 border rounded" placeholder="입금액">
                     <div class="text-xs text-gray-500 mt-1">
                         거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
                     </div>
                 </div>
-
                 <div class="flex justify-end space-x-4">
-                    <button type="button" class="modal-close px-4 py-2 bg-gray-200 rounded">취소</button>
-                    <button type="button" id="depositBtn" class="px-4 py-2 bg-blue-500 text-white rounded">
+                    <button type="button" class="modal-close px-4 py-2 text-gray-500">취소</button>
+                    <button type="submit" id="depositBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         입금하기
                     </button>
                 </div>
@@ -172,15 +176,14 @@
         <div class="p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold">가상계좌에서 실계좌로 출금하기</h3>
-                <button class="modal-close">×</button>
+                <button class="modal-close text-gray-500 hover:text-gray-700">×</button>
             </div>
             <form id="withdrawForm">
                 {% csrf_token %}
                 <input type="hidden" name="transfer_type" value="WITHDRAWAL">
-
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">입금받을 실계좌 선택</label>
-                    <select name="to_account" class="w-full p-2 border rounded" required>
+                    <label class="block mb-2 text-sm font-medium">입금받을 실계좌 선택</label>
+                    <select name="to_account" class="w-full p-2 border rounded">
                         {% for account in real_accounts %}
                         <option value="{{ account.account_id }}">
                             {{ account.bank_name }} {{ account.account_id }}
@@ -188,20 +191,17 @@
                         {% endfor %}
                     </select>
                 </div>
-
                 <div class="mb-4">
-                    <label class="block text-sm mb-2">금액</label>
-                    <input type="number" name="amount" class="w-full p-2 border rounded" required>
+                    <label class="block mb-2 text-sm font-medium">금액</label>
+                    <input type="number" name="amount" class="w-full p-2 border rounded" placeholder="출금액">
                     <div class="text-xs text-gray-500 mt-1">
-                        가용 잔액: {{ virtual_account.balance|floatformat:0 }}원
-                        <br>
+                        가용 잔액: {{ virtual_account.balance|floatformat:0 }}원<br>
                         거래 한도: {{ virtual_account.transfer_limit|floatformat:0 }}원
                     </div>
                 </div>
-
                 <div class="flex justify-end space-x-4">
-                    <button type="button" class="modal-close px-4 py-2 bg-gray-200 rounded">취소</button>
-                    <button type="button" id="withdrawBtn" class="px-4 py-2 bg-blue-500 text-white rounded">
+                    <button type="button" class="modal-close px-4 py-2 text-gray-500">취소</button>
+                    <button type="submit" id="withdrawBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         출금하기
                     </button>
                 </div>
@@ -209,7 +209,6 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -317,47 +316,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 기존 입출금 폼 제출 처리
-    async function handleTransfer(formData) {
-        try {
-            const response = await fetch("{% url 'process_transfer' %}", {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showToast(result.message, 'success');
-                const balanceElement = document.querySelector('.balance-display');
-                if (balanceElement) {
-                    balanceElement.textContent = `${Number(result.data.balance).toLocaleString()} 원`;
-                }
-                depositModal.classList.add('hidden');
-                withdrawModal.classList.add('hidden');
-                
-                setTimeout(() => {
-                    location.reload();
-                }, 3000);
-            } else {
-                showToast(result.message, 'error');
-            }
-        } catch (error) {
-            showToast('처리 중 오류가 발생했습니다.', 'error');
-        }
-    }
-
+    // 입출금 폼 제출 처리
     const depositForm = document.getElementById('depositForm');
     const withdrawForm = document.getElementById('withdrawForm');
-    const depositBtn = document.getElementById('depositBtn');
-    const withdrawBtn = document.getElementById('withdrawBtn');
 
-    // 입금 폼 제출 처리
-    depositBtn.addEventListener('click', () => {
-        const form = depositForm;
+    // 입금 폼 제출 이벤트
+    depositForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
         const amountInput = form.querySelector('input[name="amount"]');
         const fromAccountSelect = form.querySelector('select[name="from_account"]');
         const selectedOption = fromAccountSelect.selectedOptions[0];
@@ -379,12 +345,40 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        handleTransfer(new FormData(form));
+        try {
+            const response = await fetch("{% url 'process_transfer' %}", {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                const balanceElement = document.querySelector('.balance-display');
+                if (balanceElement) {
+                    balanceElement.textContent = `${Number(result.data.balance).toLocaleString()} 원`;
+                }
+                depositModal.classList.add('hidden');
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                showToast(result.message, 'error');
+            }
+        } catch (error) {
+            showToast('처리 중 오류가 발생했습니다.', 'error');
+        }
     });
 
-    // 출금 폼 제출 처리
-    withdrawBtn.addEventListener('click', () => {
-        const form = withdrawForm;
+    // 출금 폼 제출 이벤트
+    withdrawForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.target;
         const amountInput = form.querySelector('input[name="amount"]');
         const virtualAccountBalance = parseFloat('{{ virtual_account.balance }}');
         const amount = parseFloat(amountInput.value);
@@ -404,7 +398,34 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        handleTransfer(new FormData(form));
+        try {
+            const response = await fetch("{% url 'process_transfer' %}", {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                const balanceElement = document.querySelector('.balance-display');
+                if (balanceElement) {
+                    balanceElement.textContent = `${Number(result.data.balance).toLocaleString()} 원`;
+                }
+                withdrawModal.classList.add('hidden');
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            } else {
+                showToast(result.message, 'error');
+            }
+        } catch (error) {
+            showToast('처리 중 오류가 발생했습니다.', 'error');
+        }
     });
 });
 </script>

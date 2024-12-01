@@ -136,7 +136,7 @@
                             <div class="text-sm text-gray-600">계좌번호: {{ account.account_id }}</div>
                             <div class="text-sm text-gray-600">잔액: {{ account.balance|floatformat:0 }}원</div>
                         </div>
-                        {% if not forloop.first %}  <!-- 첫 번째(주계좌)가 아닌 경우에만 삭제 버튼 표시 -->
+                        {% if real_accounts.count > 1 %}  <!-- 계좌가 2개 이상일 때만 삭제 버튼 표시 -->
                         <form method="POST" style="display: inline;">
                             {% csrf_token %}
                             <input type="hidden" name="form_type" value="delete_account">

@@ -25,7 +25,7 @@ class InfoValidator:
     def __init__(self):
         """검증기 초기화"""
         pass
-
+    
     def validate_sign_up_info(self, user_data):
         """회원가입 정보 검증"""
         try:
@@ -50,14 +50,14 @@ class InfoValidator:
             if UserInfo.objects.filter(phone_number=user_data['phone_number']).exists():
                 return False, "이미 등록된 전화번호입니다."
 
-            # 계좌번호 중복 검사
-            if UserInfo.objects.filter(account_id=user_data['account_id']).exists():
+            # 계좌번호 중복 검사 - BankAccount 테이블에서 검사
+            if BankAccount.objects.filter(account_id=user_data['account_id']).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
             return True, "유효한 회원가입 정보입니다."
         except Exception as e:
             return False, f"검증 중 오류가 발생했습니다: {str(e)}"
-
+    
     def validate_login_info(self, user_id, password):
         """로그인 정보 검증"""
         try:
@@ -91,7 +91,8 @@ class User:
                 'user_name': request.POST.get('user_name'),
                 'birth_date': request.POST.get('birth_date'),
                 'phone_number': request.POST.get('phone_number'),
-                'account_id': request.POST.get('account_id')
+                'account_id': request.POST.get('account_id'),
+                'bank_name': request.POST.get('bank_name')
             }
             
             is_valid, message = self.info_validator.validate_sign_up_info(user_data)
@@ -224,6 +225,14 @@ class User:
             logger.error(f"Transfer limit update error: {str(e)}")
             return False, "입출금 한도 설정 중 오류가 발생했습니다."
 
+    def get_user_accounts(self, user_id):
+        """사용자의 모든 실계좌 조회"""
+        try:
+            return BankAccount.objects.filter(user_id=user_id)
+        except Exception as e:
+            logger.error(f"Get user accounts error: {str(e)}")
+            return None
+
     def add_bank_account(self, user_id, bank_name, account_id):
         """실계좌 추가"""
         try:
@@ -233,7 +242,10 @@ class User:
             if BankAccount.objects.filter(account_id=account_id).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
-            bank_account = BankAccount.objects.create(
+            # 첫 번째 계좌 추가인지 확인
+            existing_accounts = self.get_user_accounts(user_id)
+            
+            BankAccount.objects.create(
                 account_id=account_id,
                 bank_name=bank_name,
                 balance=0.00,
@@ -253,62 +265,16 @@ class User:
             if user_accounts.count() <= 1:
                 return False, "최소 1개의 실계좌는 유지해야 합니다."
 
-            user = UserInfo.objects.get(user_id=user_id)
-
-            # 주계좌를 삭제하려는 경우
-            if user.account_id == account_id:
-                # 다른 계좌가 있는지 확인
-                other_account = user_accounts.exclude(account_id=account_id).first()
-                if not other_account:
-                    return False, "주계좌를 삭제하기 위해서는 다른 계좌가 필요합니다."
-
-                # 다른 계좌를 주계좌로 변경
-                success, message = self.change_primary_account(user_id, other_account.account_id)
-                if not success:
-                    return False, message
-
-                return True, "계좌가 성공적으로 삭제되었습니다."
-
-            # 일반 계좌 삭제
+            # 계좌 삭제
             account = BankAccount.objects.get(account_id=account_id, user_id=user_id)
             account.delete()
             return True, "계좌가 성공적으로 삭제되었습니다."
 
+        except BankAccount.DoesNotExist:
+            return False, "해당 계좌를 찾을 수 없습니다."
         except Exception as e:
             logger.error(f"Bank account deletion error: {str(e)}")
             return False, "계좌 삭제 중 오류가 발생했습니다."
-    
-    def get_user_accounts(self, user_id):
-        """사용자의 모든 실계좌 조회"""
-        try:
-            user = UserInfo.objects.get(user_id=user_id)
-            # UserInfo의 account_id와 user_id로 등록된 계좌 모두 조회
-            return BankAccount.objects.filter(
-                Q(account_id=user.account_id) |  # 회원가입 시 등록한 계좌
-                Q(user_id=user_id)  # 추가로 등록한 계좌
-            ).distinct()
-        except Exception as e:
-            logger.error(f"Get user accounts error: {str(e)}")
-            return None
-    
-    def change_primary_account(self, user_id, new_account_id):
-        """주계좌 변경"""
-        try:
-            with transaction.atomic():
-                user = UserInfo.objects.get(user_id=user_id)
-                old_account_id = user.account_id
-
-                # 새로운 계좌로 주계좌 변경
-                user.account = BankAccount.objects.get(account_id=new_account_id)
-                user.save()
-
-                # 이전 주계좌 삭제
-                BankAccount.objects.filter(account_id=old_account_id).delete()
-
-                return True, "주계좌가 성공적으로 변경되었습니다."
-        except Exception as e:
-            logger.error(f"Primary account change error: {str(e)}")
-            return False, "주계좌 변경 중 오류가 발생했습니다."
     
     # ==========User Class 뷰 처리 메서드=========
     def handle_signup(self, request):
@@ -549,19 +515,21 @@ class InvestmentManager:
             user = trading_system.get_user_info(user_id)
             if not user:
                 return redirect('login')
-            
+
+            # 기본 탭을 portfolio로 설정
             active_tab = request.GET.get('tab', 'portfolio')
-            transaction_type = request.GET.get('type', 'sell')
+            transaction_type = request.GET.get('type', 'sell')  # 거래내역 탭의 기본값은 매도
             page = request.GET.get('page', 1)
 
             context = {
                 'user': user,
-                'active_tab': active_tab
+                'active_tab': active_tab,
+                'transaction_type': transaction_type
             }
 
-            if active_tab == 'portfolio':
-                # 투자 포트폴리오 조회
-                portfolios, summary = self.get_portfolio(user)
+            # 투자내역 데이터는 항상 조회
+            portfolios, summary = self.get_portfolio(user)
+            if portfolios and summary:
                 context.update({
                     'portfolios': portfolios,
                     'total_investment': summary['total_investment'],
@@ -569,19 +537,19 @@ class InvestmentManager:
                     'total_profit': summary['total_profit'],
                     'total_profit_rate': summary['total_profit_rate']
                 })
-            else:
-                # 거래내역 조회
+
+            # 거래내역 탭이 활성화된 경우에만 거래내역 조회
+            if active_tab == 'history':
                 orders = self.get_order_history(user, transaction_type)
-                paginator = Paginator(orders, 10)
-                current_page = paginator.get_page(page)
-                
-                context.update({
-                    'orders': current_page,
-                    'transaction_type': transaction_type
-                })
+                if orders:
+                    paginator = Paginator(orders, 10)
+                    current_page = paginator.get_page(page)
+                    context.update({
+                        'orders': current_page
+                    })
 
             return render(request, 'management/investment.html', context)
-            
+
         except Exception as e:
             logger.error(f"Investment management error: {str(e)}")
             messages.error(request, "투자내역 조회 중 오류가 발생했습니다.")
@@ -814,29 +782,28 @@ class VCTradingSystem:
             virtual_account_id = f'V{datetime.now().strftime("%Y%m%d%H%M%S")}'
             
             with transaction.atomic():
-                # 먼저 은행 계좌 생성
-                bank_account = BankAccount.objects.create(
-                    account_id=user_data['account_id'],
-                    bank_name=user_data['bank_name'],
-                    balance=0.00,
-                    user_id=user_data['user_id']
-                )
-
                 # 가상 계좌 생성
                 virtual_account = VirtualAccount.objects.create(
                     virtual_account_id=virtual_account_id,
                     balance=0.00
                 )
 
-                # UserInfo 생성 - 외래키 관계 사용
+                # UserInfo 생성
                 user_info = UserInfo.objects.create(
                     user_id=user_data['user_id'],
                     user_password=make_password(user_data['user_password']),
                     user_name=user_data['user_name'],
                     birth_date=datetime.strptime(user_data['birth_date'], '%Y-%m-%d'),
                     phone_number=user_data['phone_number'],
-                    account=bank_account,  # 외래키 관계로 수정
-                    virtual_account=virtual_account  # 외래키 관계로 수정
+                    virtual_account=virtual_account
+                )
+
+                # 첫 번째 은행 계좌 생성
+                BankAccount.objects.create(
+                    account_id=user_data['account_id'],
+                    bank_name=user_data['bank_name'],
+                    balance=0.00,
+                    user_id=user_data['user_id']
                 )
 
                 return True, "회원가입이 완료되었습니다."
@@ -846,9 +813,9 @@ class VCTradingSystem:
             return False, f"회원가입 처리 중 오류가 발생했습니다: {str(e)}"
 
     def get_user_info(self, user_id):
-        """사용자 정보 조회 - related fields 포함"""
+        """사용자 정보 조회"""
         try:
-            return UserInfo.objects.select_related('account', 'virtual_account').get(user_id=user_id)
+            return UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
         except UserInfo.DoesNotExist:
             return None
         except Exception as e:
@@ -871,16 +838,6 @@ class VCTradingSystem:
         except Exception as e:
             logger.error(f"Logout processing error: {str(e)}")
             return False, str(e)
-
-    def get_user_info(self, user_id):
-        """사용자 정보 조회"""
-        try:
-            return UserInfo.objects.get(user_id=user_id)
-        except UserInfo.DoesNotExist:
-            return None
-        except Exception as e:
-            logger.error(f"User info error: {str(e)}")
-            return None
         
     def get_virtual_account(self, virtual_account_id):
         """가상계좌 정보 조회"""
