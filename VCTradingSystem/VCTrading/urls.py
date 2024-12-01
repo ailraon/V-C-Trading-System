@@ -17,6 +17,8 @@ urlpatterns = [
     
     # API 엔드포인트
     path('api/transfer/process/', views.process_transfer, name='process_transfer'),  # 입출금 처리
+
+    path('crypto/', views.cryptolist_view, name='crypto_list'),
     
     # 테스트용 실계좌 입금 처리 URL
     path('api/test/deposit/', views.deposit_to_real_account, name='test_deposit'),

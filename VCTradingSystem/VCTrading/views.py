@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.contrib.sessions.models import Session
 from datetime import datetime
 import logging
+from .utils import get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
+
 import re  # re 모듈 추가
 from decimal import Decimal
 from .models import UserInfo, TransferHistory, BankAccount, VirtualAccount, CryptoInfo, OrderInfo, InvestmentPortfolio
