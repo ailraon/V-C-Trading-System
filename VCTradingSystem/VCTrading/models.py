@@ -49,8 +49,10 @@ class CryptoInfo(models.Model):
 
 class OrderInfo(models.Model):
     order_id = models.CharField(max_length=20, primary_key=True)
+    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')
     crypto = models.ForeignKey(CryptoInfo, on_delete=models.CASCADE, db_column='crypto_id')
-    order_date = models.DateField()
+    order_type = models.CharField(max_length=10)
+    order_date = models.DateTimeField(auto_now_add=True)
     order_price = models.DecimalField(max_digits=18, decimal_places=2)
     order_cap = models.IntegerField()
 
