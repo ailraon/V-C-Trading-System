@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.contrib.sessions.models import Session
 from datetime import datetime
 import logging
-from .utils import get_krw_markets_with_prices_and_change  # 유틸리티 함수 가져오기
+from .utils import get_krw_markets_with_prices_and_change, get_crypto_detail_info # 유틸리티 함수 가져오기
 
 import re  # re 모듈 추가
 from decimal import Decimal
@@ -1019,12 +1019,142 @@ def cryptolist_view(request):
 
     try:
         market_data = get_krw_markets_with_prices_and_change()
+
+        crypto_code = request.GET.get('code', 'KRW-BTC')
+        transfer_type = request.GET.get('type', 'buy')
         
         context = {
-            "market_data": market_data
+            "market_data": market_data,
+            "crypto_code" : crypto_code,
+            "transfer_type" : transfer_type
         }
+
+        if crypto_code:
+            crypto_detail = get_crypto_detail_info(crypto_code, market_data)
+            context.update({
+                "market_data": market_data,
+                "crypto_code" : crypto_code,
+                "transfer_type" : transfer_type,
+                "crypto_detail" : crypto_detail
+            })
 
         return render(request, "cryptocurrency/cryptolist.html", context)
 
     except Exception as e:
         return render(request, "cryptocurrency/cryptolist.html", {"error": str(e)})
+
+def buy_crypto(request):
+    """
+    가상화폐 매수
+    """
+    try:
+        # POST 요청 데이터
+        user_id = request.POST.get("user_id")
+        crypto_id = request.POST.get("crypto_id")
+        quantity = Decimal(request.POST.get("quantity")) 
+        market_price = Decimal(request.POST.get("market_price"))  # 시장가
+
+        # 필요한 모델 객체 가져오기
+        user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
+        crypto = CryptoInfo.objects.get(crypto_id=crypto_id)
+
+        # 총 거래금액 계산
+        total_amount = market_price * quantity
+
+        # 가용 잔액 확인
+        if user.virtual_account.balance < total_amount:
+            return JsonResponse({"success": False, "message": "Insufficient balance for this purchase."}, status=400)
+
+        # 주문 내역(OrderInfo) 추가
+        order = OrderInfo.objects.create(
+            user=user,
+            crypto=crypto,
+            order_type="BUY",
+            order_price=market_price,
+            order_quantity=quantity,
+            total_amount=total_amount,
+            market_price=market_price
+        )
+
+        # 투자 포트폴리오 업데이트
+        portfolio, created = InvestmentPortfolio.objects.get_or_create(
+            user=user,
+            crypto=crypto,
+            defaults={
+                "total_quantity": quantity,
+                "avg_buy_price": market_price,
+                "total_investment": total_amount,
+                "first_buy_date": order.executed_time
+            },
+        )
+
+        if not created:
+            # 기존 투자 내역 업데이트
+            total_quantity = portfolio.total_quantity + quantity
+            total_investment = portfolio.total_investment + total_amount
+            avg_buy_price = total_investment / total_quantity
+
+            portfolio.total_quantity = total_quantity
+            portfolio.avg_buy_price = avg_buy_price
+            portfolio.total_investment = total_investment
+            portfolio.save()
+
+        # 사용자 가상계좌 잔액 차감
+        user.virtual_account.balance -= total_amount
+        user.virtual_account.save()
+
+        return JsonResponse({"success": True, "message": "Purchase completed successfully."})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+    
+def sell_crypto(request):
+    """
+    가상화폐 매도
+    """
+    try:
+        # POST 요청 데이터
+        user_id = request.POST.get("user_id")
+        crypto_id = request.POST.get("crypto_id")
+        quantity = Decimal(request.POST.get("quantity"))
+        market_price = Decimal(request.POST.get("market_price"))  # 시장가
+
+        # 필요한 모델 객체 가져오기
+        user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
+        crypto = CryptoInfo.objects.get(crypto_id=crypto_id)
+
+        # 투자 내역 확인
+        portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
+        if not portfolio or portfolio.total_quantity < quantity:
+            return JsonResponse({"success": False, "message": "Insufficient crypto quantity for this sale."}, status=400)
+
+        # 총 거래금액 계산
+        total_amount = market_price * quantity
+
+        # 주문 내역(OrderInfo) 추가
+        OrderInfo.objects.create(
+            user=user,
+            crypto=crypto,
+            order_type="SELL",
+            order_price=market_price,
+            order_quantity=quantity,
+            total_amount=total_amount,
+            market_price=market_price
+        )
+
+        # 투자 내역 업데이트
+        portfolio.total_quantity -= quantity
+        if portfolio.total_quantity == 0:
+            portfolio.delete()  # 보유량 0인 경우 삭제
+        else:
+            portfolio.total_investment -= market_price * quantity
+            portfolio.save()
+
+        # 사용자 가상계좌 잔액 증가
+        user.virtual_account.balance += total_amount
+        user.virtual_account.save()
+
+        return JsonResponse({"success": True, "message": "Sale completed successfully."})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)

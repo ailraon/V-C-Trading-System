@@ -2,7 +2,7 @@
 {% block content %}
 <div class="flex">
     <!-- 왼쪽 사이드바 -->
-    <div class="w-1/4 bg-white shadow p-4">
+    <div class="bg-white shadow p-4">
         <div class="mb-4">
             <input
                 type="text"
@@ -26,7 +26,7 @@
                 </thead>
                 <tbody>
                     {% for data in market_data %}
-                    <tr class="border-b hover:bg-gray-100">
+                    <tr class="border-b hover:bg-gray-100" onclick="goToDetail('{{ data.market }}', 'buy')" style="cursor: pointer;">
                         <td class="px-4 py-2">
                             <span class="font-medium text-gray-900">{{ data.korean_name }}</span>
                             <br />
@@ -45,15 +45,16 @@
 
     <!-- 오른쪽 메인 콘텐츠 -->
     <div class="w-3/4 p-4">
+        {% for detail in crypto_detail %}
         <div class="bg-white p-6 rounded-lg shadow">
             <!-- 상단 -->
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h2 class="text-2xl font-bold">가상화폐 명</h2>
-                    <p class="text-gray-500">영문 명</p>
+                    <h2 class="text-2xl font-bold">{{ detail.korean_name }}</h2>
+                    <p class="text-gray-500">{{ detail.market }}</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-3xl font-bold">0,000,000</p>
+                    <p class="text-3xl font-bold">{{ detail.trade_price|floatformat:0 }}</p>
                     <p class="text-green-500">+0.00%</p>
                 </div>
             </div>
@@ -103,6 +104,7 @@
                 </div>
             </div>
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
@@ -131,5 +133,18 @@
             }
         }
     });
+    // 가상화폐 클릭 시 URL 파라미터 변경
+    function goToDetail(code, type) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('code', code);
+        url.searchParams.set('type', type);
+        window.location.href = url.toString();
+    }
+
+    function change(type) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('type', type);
+        window.location.href = url.toString();
+    }
 </script>
 {% endblock %}

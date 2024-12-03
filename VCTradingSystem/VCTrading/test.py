@@ -50,27 +50,9 @@ def get_crypto_detail_info(crypto_id, market_data):
 
     return details
 
-def get_crypto_detail_chart_info(crypto_id, time):
+crypto_code = "KRW-BTC"
+crypto = get_krw_markets_with_prices_and_change()
+crypto_detail = get_crypto_detail_info(crypto_code, crypto)
 
-    url = "https://api.upbit.com/v1/candles/"
-    params = {  
-        'market': crypto_id,  
-        'count': 20,
-        'to': ''
-    }  
-    headers = {"accept": "application/json"}
-
-    times = {
-        's': 'seconds',
-        'm1': 'minutes/1',
-        'm5': 'minutes/5',
-        'm15': 'minutes/15',
-        'h1': 'minutes/60',
-        'd': 'days',
-        'w': 'weeks',
-        'm': 'months'
-    }
-
-    response = requests.get(url + times[time], params=params, headers=headers)
-    
-    return response.text
+print(crypto_detail)
+# print(get_crypto_detail_info("KRW-BTC"))
