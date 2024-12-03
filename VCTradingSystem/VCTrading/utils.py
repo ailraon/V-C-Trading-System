@@ -31,7 +31,38 @@ def get_krw_markets_with_prices_and_change():
 
     return market_data_with_prices
 
-# 결과 출력
-# market_data = get_krw_markets_with_prices()
-# for data in market_data:
-#     print(f"{data['market']} ({data['korean_name']}, {data['english_name']}): {data['current_price']} KRW")
+def get_crypto_detail_info(crypto_id):
+    """가상화폐 상세정보"""
+    server_url = "https://api.upbit.com/v1/ticker"
+
+    params = {
+        "markets": crypto_id
+    }
+
+    res = requests.get(server_url, params=params)
+    return res
+
+def get_crypto_detail_chart_info(crypto_id, time):
+
+    url = "https://api.upbit.com/v1/candles/"
+    params = {  
+        'market': crypto_id,  
+        'count': 20,
+        'to': ''
+    }  
+    headers = {"accept": "application/json"}
+
+    times = {
+        's': 'seconds',
+        'm1': 'minutes/1',
+        'm5': 'minutes/5',
+        'm15': 'minutes/15',
+        'h1': 'minutes/60',
+        'd': 'days',
+        'w': 'weeks',
+        'm': 'months'
+    }
+
+    response = requests.get(url + times[time], params=params, headers=headers)
+    
+    return response.text

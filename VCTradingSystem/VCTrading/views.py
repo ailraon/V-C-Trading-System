@@ -976,3 +976,55 @@ def process_transfer(request):
 def deposit_to_real_account(request):
     trading_system = VCTradingSystem()
     return trading_system.handle_test_deposit(request)
+
+class cryptocurrency:
+    """가상화폐 클래스"""
+    def __init__(self):
+        pass
+
+    def get_crypto_list_info(self):
+        """가상화폐 전체 조회"""
+        try:
+            return True
+        except:
+            return False
+    
+    def get_crypto_detail_info(self, crypto_id):
+        """가상화폐 상세정보 조회"""
+        try:
+            
+            return True
+        except:
+            return False
+    
+    def sell_crypto():
+        """가상화폐 매도"""
+        try:
+            return True
+        except:
+            return False
+    
+    def buy_crypto():
+        """가상화폐 매수"""
+        try:
+            return True
+        except:
+            return False
+
+def cryptolist_view(request):
+    """
+    가상화폐 목록 및 가격 조회
+    """
+    crypto = cryptocurrency()
+
+    try:
+        market_data = get_krw_markets_with_prices_and_change()
+        
+        context = {
+            "market_data": market_data
+        }
+
+        return render(request, "cryptocurrency/cryptolist.html", context)
+
+    except Exception as e:
+        return render(request, "cryptocurrency/cryptolist.html", {"error": str(e)})
