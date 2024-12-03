@@ -22,4 +22,8 @@ urlpatterns = [
     
     # 테스트용 실계좌 입금 처리 URL
     path('api/test/deposit/', views.deposit_to_real_account, name='test_deposit'),
+
+    # 가상화폐 예측
+    path('cryptocurrency/prediction/', views.prediction_view, name='prediction'),
+    path('api/predict/<str:coin_id>/', views.get_prediction_data, name='get_prediction'),
 ]
