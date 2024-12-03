@@ -1,28 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <!-- 계좌 정보 섹션 -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-xl font-bold mb-4">계좌 정보</h2>
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <span class="text-sm text-gray-600">가상 계좌번호</span>
-                <p class="text-lg font-medium">{{ user.virtual_account_id }}</p>
+                <div>{{ user.virtual_account_id }}</div>
             </div>
             <div>
                 <span class="text-sm text-gray-600">실제 계좌번호</span>
-                <p class="text-lg font-medium">{{ user.account_id }}</p>
+                <div>{{ user.account_id }}</div>
             </div>
         </div>
     </div>
 
-    <!-- 기능 버튼 섹션 -->
-    <div class="grid grid-cols-2 gap-6">
+    <div class="grid grid-cols-3 gap-6">
         <a href="{% url 'investment_management' %}" class="flex items-center justify-center bg-blue-500 text-white rounded-lg p-4 hover:bg-blue-600 transition-colors">
             투자내역 관리
         </a>
         <a href="{% url 'transfer_management' %}" class="flex items-center justify-center bg-green-500 text-white rounded-lg p-4 hover:bg-green-600 transition-colors">
             자산입출금 관리
+        </a>
+        <a href="{% url 'user_info_management' %}" class="flex items-center justify-center bg-purple-500 text-white rounded-lg p-4 hover:bg-purple-600 transition-colors">
+            사용자 정보 관리
         </a>
     </div>
 </div>
