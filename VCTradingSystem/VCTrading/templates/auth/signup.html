@@ -43,10 +43,10 @@
                 <!-- 이름 입력 -->
                 <div>
                     <label for="user_name" class="block text-sm font-medium text-gray-700">이름</label>
-                    <input type="text" id="user_name" name="user_name" maxlength="20" required
+                    <input type="text" id="user_name" name="user_name" maxlength="5" required
                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ user_name|default:'' }}">
-                    <p class="mt-1 text-sm text-gray-500">* 최대 20자까지 입력 가능합니다</p>
+                    <p class="mt-1 text-sm text-gray-500">* 이름은 2~5자의 한글만 입력 가능합니다.</p>
                 </div>
 
                 <!-- 생년월일 입력 -->

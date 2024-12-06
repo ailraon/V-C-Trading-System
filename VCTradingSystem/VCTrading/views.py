@@ -218,10 +218,8 @@ class User:
         """회원 탈퇴 처리"""
         try:
             with transaction.atomic():
-                user = UserInfo.objects.select_related(
-                    'account', 
-                    'virtual_account'
-                ).get(user_id=user_id)
+                # 사용자 정보 조회 (virtual_account만 select_related로 가져옴)
+                user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
 
                 # 비밀번호 확인
                 if not check_password(password, user.user_password):
@@ -230,12 +228,10 @@ class User:
                 # 관련된 거래 내역 삭제
                 InvestmentPortfolio.objects.filter(user=user).delete()
                 TransferHistory.objects.filter(user=user).delete()
+                OrderInfo.objects.filter(user=user).delete()
 
-                # 사용자의 모든 실계좌 조회 및 삭제
-                BankAccount.objects.filter(
-                    Q(account_id=user.account_id) |
-                    Q(user_id=user_id)
-                ).delete()
+                # 사용자의 모든 실계좌 삭제
+                BankAccount.objects.filter(user=user).delete()
 
                 # 가상계좌 삭제
                 if user.virtual_account:
@@ -923,17 +919,26 @@ class VCTradingSystem:
                         'success': False,
                         'message': '사용자 정보를 찾을 수 없습니다.'
                     })
-                
+
                 account_id = request.POST.get('account_id')
                 amount = Decimal(request.POST.get('amount', '0'))
-                
+
                 if amount <= 0:
                     messages.error(request, '유효하지 않은 금액입니다.')
                     return JsonResponse({
                         'success': False,
                         'message': '유효하지 않은 금액입니다.'
                     })
-                
+
+                # 입금 한도 체크 추가
+                virtual_account = self.get_virtual_account(user.virtual_account_id)
+                if amount > virtual_account.transfer_limit:
+                    messages.error(request, f'입금 한도를 초과했습니다. (한도: {virtual_account.transfer_limit:,}원)')
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'입금 한도를 초과했습니다. (한도: {virtual_account.transfer_limit:,}원)'
+                    })
+
                 try:
                     with transaction.atomic():
                         # 선택한 실계좌에 입금
@@ -943,7 +948,7 @@ class VCTradingSystem:
                         )
                         real_account.balance += amount
                         real_account.save()
-                    
+
                     messages.success(request, f'{amount:,.0f}원이 입금되었습니다.')
                     return JsonResponse({
                         'success': True,
@@ -958,7 +963,7 @@ class VCTradingSystem:
                         'success': False,
                         'message': '해당 계좌를 찾을 수 없습니다.'
                     })
-                    
+
             except Exception as e:
                 logger.error(f"Test deposit error: {str(e)}")
                 messages.error(request, '처리 중 오류가 발생했습니다.')
@@ -966,7 +971,7 @@ class VCTradingSystem:
                     'success': False,
                     'message': f'처리 중 오류가 발생했습니다: {str(e)}'
                 })
-        
+
         messages.error(request, '잘못된 요청입니다.')
         return JsonResponse({
             'success': False,
