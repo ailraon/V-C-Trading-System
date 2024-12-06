@@ -49,7 +49,7 @@ class CryptoInfo(models.Model):
         db_table = 'Crypto_Info'
 
 class OrderInfo(models.Model):
-    order_id = models.CharField(max_length=25, primary_key=True)
+    order_id = models.IntegerField(primary_key=True)
     user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')  # 사용자 정보 추가
     crypto = models.ForeignKey(CryptoInfo, on_delete=models.CASCADE, db_column='crypto_id')
     order_type = models.CharField(max_length=10)  # 'BUY' or 'SELL'
