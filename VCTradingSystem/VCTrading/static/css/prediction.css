@@ -1,0 +1,186 @@
+/* Base styles */
+.prediction-wrapper {
+    padding: 2.5rem;
+    max-width: 80rem;
+    margin: 0 auto;
+    background-color: rgb(249, 250, 251);
+}
+
+/* Header */
+.prediction-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.prediction-header h2 {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: rgb(17, 24, 39);
+    margin-bottom: 1.25rem;
+}
+
+/* Search controls */
+.prediction-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-input, 
+.coin-select {
+    padding: 0.875rem 1rem;
+    border: 1px solid rgb(209, 213, 219);
+    border-radius: 9999px;
+    min-width: 220px;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.form-input:hover,
+.coin-select:hover {
+    border-color: rgb(59, 130, 246);
+    background-color: rgb(249, 250, 251);
+}
+
+.form-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(59, 130, 246);
+    border-color: transparent;
+}
+
+.prediction-btn {
+    padding: 0.875rem 1.5rem;
+    background-image: linear-gradient(to right, rgb(59, 130, 246), rgb(96, 165, 250));
+    color: white;
+    font-weight: bold;
+    border-radius: 9999px;
+    transition: all 0.2s;
+}
+
+.prediction-btn:hover {
+    background-image: linear-gradient(to right, rgb(37, 99, 235), rgb(59, 130, 246));
+    transform: translateY(-2px);
+}
+
+/* Price cards */
+.price-info-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+@media (min-width: 768px) {
+    .price-info-container {
+        flex-direction: row;
+    }
+}
+
+.price-card {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.price-card:hover {
+    transform: translateY(-4px);
+}
+
+.price-card h3 {
+    font-size: 1.25rem;
+    color: rgb(75, 85, 99);
+    margin-bottom: 1rem;
+}
+
+.price-value {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: rgb(59, 130, 246);
+}
+
+/* Stat cards */
+.prediction-stats {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+}
+
+@media (min-width: 768px) {
+    .prediction-stats {
+        flex-direction: row;
+    }
+}
+
+.stat-card {
+    flex: 1;
+    background-color: white;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    min-width: 200px;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+}
+
+.stat-card h4 {
+    font-size: 1.125rem;
+    color: rgb(75, 85, 99);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: rgb(17, 24, 39);
+}
+
+/* Chart container */
+.chart-container {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    height: 500px;
+}
+
+/* States */
+.positive-value {
+    color: rgb(22, 163, 74);
+}
+
+.negative-value {
+    color: rgb(220, 38, 38);
+}
+
+.error-state {
+    color: rgb(239, 68, 68);
+    font-style: italic;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    border: 4px solid rgb(229, 231, 235);
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-top-color: rgb(59, 130, 246);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { 
+        transform: rotate(360deg);
+    }
+}
