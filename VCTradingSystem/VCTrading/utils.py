@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 import requests
 
 def get_krw_markets_with_prices_and_change():
@@ -72,5 +73,18 @@ def get_crypto_detail_chart_info(crypto_id, time):
     }
 
     response = requests.get(url + times[time], params=params, headers=headers)
+
+    datas = response.json()
+
+    data = [
+        {
+            "x": item["candle_date_time_kst"],
+            "o": item["opening_price"],
+            "h": item["high_price"],
+            "l": item["low_price"],
+            "c": item["trade_price"]
+        }
+        for item in datas
+    ]
     
-    return response.text
+    return data
