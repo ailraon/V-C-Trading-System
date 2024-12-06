@@ -19,6 +19,8 @@ urlpatterns = [
     path('api/transfer/process/', views.process_transfer, name='process_transfer'),  # 입출금 처리
 
     path('crypto/', views.cryptolist_view, name='crypto_list'),
+    path('crypto/buy/', views.buy_crypto, name='crypto_buy'),
+    path('crypto/sell/', views.sell_crypto, name='crypto_sell'),
     
     # 테스트용 실계좌 입금 처리 URL
     path('api/test/deposit/', views.deposit_to_real_account, name='test_deposit'),

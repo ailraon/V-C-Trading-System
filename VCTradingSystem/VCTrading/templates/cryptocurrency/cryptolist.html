@@ -78,27 +78,40 @@
                 <div>
                     <h3 class="text-lg font-bold mb-2">시세</h3>
                     <ul class="text-red-500">
-                        <li>매도1: 0,000,000</li>
-                        <li>매도2: 0,000,000</li>
+                        <li>시가: {{ detail.opening_price }}</li>
+                        <li>고가: {{ detail.high_price }}</li>
+                        <li>저가: {{ detail.low_price }}</li>
+                        <li>종가: {{ detail.trade_price }}</li>
                     </ul>
                     <ul class="text-blue-500">
-                        <li>매수1: 0,000,000</li>
-                        <li>매수2: 0,000,000</li>
                     </ul>
                 </div>
 
                 <!-- 주문 -->
                 <div>
-                    <h3 class="text-lg font-bold mb-2">매수 / 매도</h3>
-                    <form>
-                        <div class="mb-2">
+                    <div class="flex space-x-4 mb-6">
+                        <button class="px-4 py-2 rounded {% if transfer_type == 'sell' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" 
+                                onclick="change('sell')">
+                            매도
+                        </button>
+                        <button class="px-4 py-2 rounded {% if transfer_type == 'buy' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" 
+                            onclick="change('buy')">
+                            매수
+                        </button>
+                    </div>
+                    <form onsubmit="handleTrade(event, '{{ detail.market }}', '{{ detail.trade_price }}', 'quantity', 'total')">
+                        <!-- <div class="mb-2">
                             <label class="block text-sm font-medium">가격</label>
                             <input type="text" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div class="mb-2">
                             <label class="block text-sm font-medium">수량</label>
                             <input type="text" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
+                        </div> -->
+                        <input type="number" id="quantity" placeholder="수량 입력"
+                            oninput="calculateTotal(this, '{{ detail.trade_price }}', 'total')">
+                        <input type="number" id="total" placeholder="총 금액 입력"
+                            oninput="calculateQuantity(this, '{{ detail.trade_price }}', 'quantity')">
                         <button type="submit" class="w-full bg-black text-white py-2 rounded-lg">주문</button>
                     </form>
                 </div>
@@ -111,28 +124,112 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script>
+    // const candlestickData = JSON.parse("{{ candle_data|safe|escapejs }}");
+    // console.log(candlestickData);
+
+    // const allPrices = candlestickData.flatMap(d => [d.o, d.h, d.l, d.c]);
+    // const yMin = Math.min(...allPrices) * 0.95; // 최소값보다 5% 낮게 설정
+    // const yMax = Math.max(...allPrices) * 1.05; // 최대값보다 5% 높게 설정
+
+    // const ctx = document.getElementById('cryptoChart').getContext('2d');
+    // const cryptoChart = new Chart(ctx, {
+    //     type: 'candlestick',
+    //     data: {
+    //         datasets: [{
+    //             label: '가상화폐 캔들 차트',
+    //             data: candlestickData,
+    //             borderColor: {
+    //                 up: 'red',     // 상승 시 색상
+    //                 down: 'blue',  // 하락 시 색상
+    //                 unchanged: 'gray'
+    //             },
+    //             backgroundColor: {
+    //                 up: 'rgba(255, 0, 0, 0.1)',   // 상승 배경색
+    //                 down: 'rgba(0, 0, 255, 0.1)', // 하락 배경색
+    //                 unchanged: 'rgba(128, 128, 128, 0.1)'
+    //             }
+    //         }]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         scales: {
+    //             x: {
+    //                 type: 'time', // x축을 시간 축으로 설정
+    //                 time: {
+    //                     parser: 'yyyy-MM-ddTHH:mm:ss', // ISO 8601 시간 파싱
+    //                     tooltipFormat: 'yyyy-MM-dd HH:mm', // 툴팁 형식
+    //                     unit: 'hour' // 시간 단위
+    //                 },
+    //                 title: {
+    //                     display: true,
+    //                     text: '시간'
+    //                 }
+    //             },
+    //             y: {
+    //                 min: yMin, // y축 최소값
+    //                 max: yMax, // y축 최대값
+    //                 title: {
+    //                     display: true,
+    //                     text: '가격 (KRW)'
+    //                 },
+    //                 beginAtZero: false
+    //             }
+    //         }
+    //     }
+    // });
+
+    const candlestickDatas = [
+        { x: '2024-12-07T00:00:00', o: 1400000, h: 1410000, l: 1390000, c: 1405000 },
+        { x: '2024-12-07T01:00:00', o: 1405000, h: 1420000, l: 1400000, c: 1415000 },
+        { x: '2024-12-07T02:00:00', o: 1415000, h: 1430000, l: 1410000, c: 1425000 },
+        { x: '2024-12-07T03:00:00', o: 1425000, h: 1440000, l: 1420000, c: 1435000 },
+    ];
+
     const ctx = document.getElementById('cryptoChart').getContext('2d');
     const cryptoChart = new Chart(ctx, {
-        type: 'line',
+        type: 'candlestick',
         data: {
-            labels: ['10:00', '10:01', '10:02', '10:03'], // 시간 데이터
-            datasets: [{
-                label: '가격',
-                data: [10000, 10200, 10100, 10500], // 가격 데이터
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderWidth: 1
-            }]
+            datasets: [
+                {
+                    label: '가상화폐 캔들 차트',
+                    data: candlestickDatas,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                },
+            ],
         },
         options: {
             responsive: true,
             scales: {
-                x: { title: { display: true, text: '시간' } },
-                y: { title: { display: true, text: '가격 (KRW)' }, beginAtZero: false }
-            }
-        }
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'hour',
+                        tooltipFormat: 'YYYY-MM-DD HH:mm',
+                        displayFormats: {
+                            hour: 'HH:mm',
+                        },
+                    },
+                    title: {
+                        display: true,
+                        text: '시간',
+                    },
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: '가격 (KRW)',
+                    },
+                    min: 1380000, // y축 최소값
+                    max: 1450000, // y축 최대값
+                },
+            },
+        },
     });
+    
     // 가상화폐 클릭 시 URL 파라미터 변경
     function goToDetail(code, type) {
         const url = new URL(window.location.href);
@@ -145,6 +242,101 @@
         const url = new URL(window.location.href);
         url.searchParams.set('type', type);
         window.location.href = url.toString();
+    }
+
+     // 실시간 계산: 입력한 수량 * 현재가 -> 총 금액 계산
+    function calculateTotal(quantityInput, price, totalInputId) {
+        const quantity = parseFloat(quantityInput.value) || 0; // 입력된 수량
+        const total = quantity * price; // 수량 * 현재가
+        document.getElementById(totalInputId).value = total.toFixed(2); // 총 금액 표시
+    }
+
+    // 실시간 계산: 입력한 총 금액 / 현재가 -> 수량 계산
+    function calculateQuantity(totalInput, price, quantityInputId) {
+        const total = parseFloat(totalInput.value) || 0; // 입력된 총 금액
+        const quantity = total / price; // 총 금액 / 현재가
+        document.getElementById(quantityInputId).value = quantity.toFixed(8); // 수량 표시
+    }
+
+    // 토스트 메시지 표시 함수
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+            type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' :
+            'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+        }`;
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // 매도/매수 요청 함수
+    async function handleTrade(event, cryptoId, marketPrice, quantityInputId, totalInputId) {
+        event.preventDefault();
+
+        // URL 파라미터에서 타입 확인 (BUY or SELL)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tradeType = urlParams.get('type');
+
+        if (!tradeType || (tradeType !== 'buy' && tradeType !== 'sell')) {
+            showToast('Invalid trade type.', 'error');
+            return;
+        }
+
+        // 입력 값 가져오기
+        // const quantity = parseFloat(quantityInput.value);
+        // const total = parseFloat(totalInput.value);
+        
+        const QuantityInput = document.getElementById(quantityInputId);
+        const quantityValue = parseFloat(QuantityInput.value);
+
+        const TotalInput = document.getElementById(totalInputId);
+        const totalValue = parseFloat(TotalInput.value);
+
+        if (!quantityValue || quantityValue <= 0) {
+            showToast('Please enter a valid quantity.', 'error');
+            return;
+        }
+
+        // API URL 설정
+        const apiUrl = tradeType === 'buy' ? "{% url 'crypto_buy' %}" : "{% url 'crypto_sell' %}";
+
+        // 요청 데이터
+        const requestData = {
+            // user_id: 'user123', // 실제 사용자 ID로 교체
+            crypto_id: cryptoId,
+            quantity: quantityValue,
+            market_price: marketPrice,
+            total_price: totalValue
+        };
+
+        console.log(requestData);
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Django CSRF 토큰
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                location.reload(); // 성공 시 페이지 새로고침
+            } else {
+                showToast(result.message, 'error');
+            }
+        } catch (error) {
+            showToast('An error occurred while processing your request.', 'error');
+        }
     }
 </script>
 {% endblock %}
