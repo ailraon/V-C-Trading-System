@@ -37,7 +37,7 @@
                     <input type="password" id="password" name="password" minlength="8" maxlength="128" required
                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            {% if error_field == 'password' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 최소 8자 이상, 최대 128자까지 입력 가능합니다</p>
+                    <p class="mt-1 text-sm text-gray-500">* 최소 8자 이상 입력 해야합니다</p>
                 </div>
 
                 <!-- 이름 입력 -->
@@ -61,12 +61,15 @@
                 <!-- 전화번호 입력 -->
                 <div>
                     <label for="phone_number" class="block text-sm font-medium text-gray-700">전화번호</label>
-                    <input type="tel" id="phone_number" name="phone_number" maxlength="13" required
-                           pattern="^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$"
+                    <input type="tel" 
+                           id="phone_number" 
+                           name="phone_number" 
+                           maxlength="13" 
+                           required
                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ phone_number|default:'' }}"
                            {% if error_field == 'phone_number' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 010-0000-0000 형식으로 입력해주세요</p>
+                    <p class="mt-1 text-sm text-gray-500">* 숫자만 입력해주세요.</p>
                 </div>
 
                 <!-- 은행 선택 및 계좌번호 입력 -->
@@ -86,11 +89,11 @@
 
                 <div>
                     <label for="account_id" class="block text-sm font-medium text-gray-700">계좌번호</label>
-                    <input type="text" id="account_id" name="account_id" maxlength="20" required
+                    <input type="text" id="account_id" name="account_id" maxlength="14" required
                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                            value="{{ account_id|default:'' }}"
                            {% if error_field == 'account_id' %}autofocus{% endif %}>
-                    <p class="mt-1 text-sm text-gray-500">* 최대 20자까지 입력 가능합니다</p>
+                    <p class="mt-1 text-sm text-gray-500">* 최대 14자까지 입력 가능합니다</p>
                 </div>
             </div>
 
@@ -109,5 +112,49 @@
         </form>
     </div>
 </div>
+
+<script>
+    // 전화번호 포맷팅 함수
+    function formatPhoneNumber(value) {
+        // 모든 하이픈 제거 후 숫자만 추출
+        const phoneNumber = value.replace(/[^0-9]/g, '');
+        
+        if (phoneNumber.length <= 3) {
+            return phoneNumber;
+        }
+        
+        if (phoneNumber.length <= 7) {
+            return phoneNumber.slice(0, 3) + '-' + phoneNumber.slice(3);
+        }
+        
+        const maxLength = phoneNumber.length > 11 ? 11 : phoneNumber.length;
+        return phoneNumber.slice(0, 3) + '-' + 
+               phoneNumber.slice(3, 7) + '-' + 
+               phoneNumber.slice(7, maxLength);
+    }
+    
+    // 전화번호 입력 필드에 이벤트 리스너 추가
+    document.getElementById('phone_number').addEventListener('input', function(e) {
+        let value = e.target.value;
+        
+        // 입력값이 붙여넣기 등으로 들어온 경우에도 처리
+        if (value) {
+            e.target.value = formatPhoneNumber(value);
+        }
+    });
+    
+    // 폼 제출 전 유효성 검사
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const phoneInput = document.getElementById('phone_number');
+        const phoneNumber = phoneInput.value.replace(/[^0-9]/g, '');
+        
+        if (phoneNumber.length < 10 || phoneNumber.length > 11) {
+            e.preventDefault();
+            alert('올바른 전화번호 형식이 아닙니다.');
+            phoneInput.focus();
+            return false;
+        }
+    });
+</script>
 
 {% endblock %}

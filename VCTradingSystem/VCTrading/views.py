@@ -46,15 +46,50 @@ class InfoValidator:
             # 비밀번호 유효성 검사
             if len(user_data['user_password']) < 8:
                 return False, "비밀번호는 8자 이상이어야 합니다."
+            
+            # 이름 유효성 검사 추가
+            if not re.match(r"^[가-힣]{2,5}$", user_data['user_name']):
+                return False, "이름은 2~5자의 한글만 입력 가능합니다."
 
-            # 전화번호 중복/형식 검사
-            phone_pattern = re.compile(r'^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$')
-            if not phone_pattern.match(user_data['phone_number']):
+            # 생년월일 유효성 검사
+            try:
+                birth_date = datetime.strptime(user_data['birth_date'], '%Y-%m-%d').date()
+                today = datetime.now().date()
+
+                if birth_date > today:
+                    return False, "미래 날짜는 입력할 수 없습니다."
+            except ValueError:
+                return False, "올바른 날짜 형식이 아닙니다."
+        
+            # 전화번호 형식 및 중복 검사
+            phone_number = user_data['phone_number'].replace('-', '')  # 하이픈 제거
+            if not phone_number.isdigit() or not len(phone_number) in [10, 11]:
                 return False, "올바른 전화번호 형식이 아닙니다."
-            if UserInfo.objects.filter(phone_number=user_data['phone_number']).exists():
+            
+            # 전화번호 포맷팅
+            if len(phone_number) == 11:
+                formatted_phone = f"{phone_number[:3]}-{phone_number[3:7]}-{phone_number[7:]}"
+            else:  # 10자리인 경우
+                formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
+            
+            # 포맷팅된 전화번호로 중복 검사
+            if UserInfo.objects.filter(phone_number=formatted_phone).exists():
                 return False, "이미 등록된 전화번호입니다."
+                
+            # 포맷팅된 전화번호를 저장용 데이터에 다시 할당
+            user_data['phone_number'] = formatted_phone
 
-            # 계좌번호 중복 검사 - BankAccount 테이블에서 검사
+
+            # 계좌번호 유효성 검사 추가
+            account_id = user_data['account_id']
+            if not account_id.isdigit():
+                return False, "계좌번호는 숫자만 입력 가능합니다."
+            
+            # 계좌번호 길이 검사 추가 (10~14자리)
+            if not (10 <= len(account_id) <= 14):
+                return False, "계좌번호는 10~14자리여야 합니다."
+            
+            # 계좌번호 중복 검사
             if BankAccount.objects.filter(account_id=user_data['account_id']).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
@@ -155,10 +190,22 @@ class User:
             if update_data.get('birth_date'):
                 user.birth_date = datetime.strptime(update_data['birth_date'], '%Y-%m-%d')
             if update_data.get('phone_number'):
-                # 전화번호 중복 체크
-                if UserInfo.objects.filter(phone_number=update_data['phone_number']).exclude(user_id=user_id).exists():
+                # 전화번호 형식 처리
+                phone_number = update_data['phone_number'].replace('-', '')
+                if not phone_number.isdigit() or not len(phone_number) in [10, 11]:
+                    return False, "올바른 전화번호 형식이 아닙니다."
+                
+                # 전화번호 포맷팅
+                if len(phone_number) == 11:
+                    formatted_phone = f"{phone_number[:3]}-{phone_number[3:7]}-{phone_number[7:]}"
+                else:  # 10자리인 경우
+                    formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
+                
+                # 전화번호 중복 체크 (자신의 번호는 제외)
+                if UserInfo.objects.filter(phone_number=formatted_phone).exclude(user_id=user_id).exists():
                     return False, "이미 등록된 전화번호입니다."
-                user.phone_number = update_data['phone_number']
+                    
+                user.phone_number = formatted_phone
             
             user.save()
             return True, "사용자 정보가 성공적으로 수정되었습니다."

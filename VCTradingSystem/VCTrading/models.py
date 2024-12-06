@@ -12,16 +12,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class BankAccount(models.Model):
-    account_id = models.CharField(max_length=20, primary_key=True)
-    bank_name = models.CharField(max_length=100)
-    balance = models.DecimalField(max_digits=18, decimal_places=2, default=0.00)
-    user_id = models.CharField(max_length=20)  # UserInfo 참조
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'Bank_Account'
-
 class VirtualAccount(models.Model):
     virtual_account_id = models.CharField(max_length=20, primary_key=True)
     balance = models.DecimalField(max_digits=18, decimal_places=2, default=0.00)
@@ -44,19 +34,29 @@ class UserInfo(models.Model):
     class Meta:
         db_table = 'UserInfo'
 
-class CryptoInfo(models.Model):
-   crypto_id = models.CharField(max_length=20, primary_key=True)
-   crypto_type = models.CharField(max_length=20)
-   crypto_name = models.CharField(max_length=50)
-   crypto_price = models.DecimalField(max_digits=18, decimal_places=8)
-   crypto_volume = models.IntegerField()
-   crypto_cap = models.IntegerField()
-   executed_price = models.DecimalField(max_digits=18, decimal_places=8)
-   executed_quantity = models.IntegerField()
-   quote_timestamp = models.DateTimeField(auto_now_add=True)
+class BankAccount(models.Model):
+    account_id = models.CharField(max_length=20, primary_key=True)
+    bank_name = models.CharField(max_length=100)
+    balance = models.DecimalField(max_digits=18, decimal_places=2, default=0.00)
+    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')
+    created_at = models.DateTimeField(auto_now_add=True)
 
-   class Meta:
-       db_table = 'Crypto_Info'
+    class Meta:
+        db_table = 'Bank_Account'
+
+class CryptoInfo(models.Model):
+    crypto_id = models.CharField(max_length=20, primary_key=True)
+    crypto_type = models.CharField(max_length=20)
+    crypto_name = models.CharField(max_length=50)
+    crypto_price = models.DecimalField(max_digits=18, decimal_places=8)
+    crypto_volume = models.IntegerField()
+    crypto_cap = models.IntegerField()
+    executed_price = models.DecimalField(max_digits=18, decimal_places=8)
+    executed_quantity = models.IntegerField()
+    quote_timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'Crypto_Info'
 
 class OrderInfo(models.Model):
     order_id = models.CharField(max_length=25, primary_key=True)
@@ -88,19 +88,19 @@ class InvestmentPortfolio(models.Model):
         unique_together = ('user', 'crypto')  # 사용자별 암호화폐는 유니크해야 함
 
 class TransferHistory(models.Model):
-   transfer_id = models.CharField(max_length=20, primary_key=True)
-   user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')
-   bank_name = models.CharField(max_length=40)
-   transfer_type = models.CharField(max_length=10)
-   amount = models.DecimalField(max_digits=18, decimal_places=2)
-   balance = models.DecimalField(max_digits=18, decimal_places=2)
-   transfer_time = models.DateTimeField(auto_now_add=True)
-   status = models.CharField(max_length=10, default='COMPLETED')
-   account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, db_column='account_id')
-   virtual_account = models.ForeignKey(VirtualAccount, on_delete=models.CASCADE, db_column='virtual_account_id')
+    transfer_id = models.CharField(max_length=20, primary_key=True)
+    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, db_column='user_id')
+    bank_name = models.CharField(max_length=40)
+    transfer_type = models.CharField(max_length=10)
+    amount = models.DecimalField(max_digits=18, decimal_places=2)
+    balance = models.DecimalField(max_digits=18, decimal_places=2)
+    transfer_time = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, default='COMPLETED')
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, db_column='account_id')
+    virtual_account = models.ForeignKey(VirtualAccount, on_delete=models.CASCADE, db_column='virtual_account_id')
 
-   class Meta:
-       db_table = 'Transfer_History'
+    class Meta:
+        db_table = 'Transfer_History'
 
 class CryptoPrediction:
     def __init__(self, coin_id: str):
