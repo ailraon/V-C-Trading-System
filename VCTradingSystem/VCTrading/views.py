@@ -286,19 +286,23 @@ class User:
             if not account_id.isdigit():
                 return False, "계좌번호는 숫자만 입력 가능합니다."
 
+            # 계좌번호 길이 검사 추가
+            if not (10 <= len(account_id) <= 14):
+                return False, "계좌번호는 10~14자리여야 합니다."
+
             if BankAccount.objects.filter(account_id=account_id).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
-            # 첫 번째 계좌 추가인지 확인
+            # 첫 번째 계좌 추가인지 확인 
             existing_accounts = self.get_user_accounts(user_id)
-            
+
             BankAccount.objects.create(
                 account_id=account_id,
-                bank_name=bank_name,
+                bank_name=bank_name,  
                 balance=0.00,
                 user_id=user_id
             )
-            
+
             return True, "계좌가 성공적으로 추가되었습니다."
         except Exception as e:
             logger.error(f"Bank account addition error: {str(e)}")
