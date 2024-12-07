@@ -8,8 +8,8 @@
             <h2 class="text-xl font-bold">가상화폐 가격 예측</h2>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 mb-8">
-            <!-- 검색 영역 -->
+        <!-- 검색 영역 -->
+        <div class="grid grid-cols-1 gap-6 mb-6">
             <div class="bg-gray-50 rounded-lg p-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">종목 선택</label>
                 <select id="coinSelect" class="form-input w-full rounded-md">
@@ -37,7 +37,7 @@
         </div>
 
         <!-- 가격 정보 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="bg-gray-50 rounded-lg p-6">
                 <div class="text-sm font-medium text-gray-500 mb-1">현재 가격</div>
                 <div id="currentPrice" class="text-2xl font-bold">로딩중...</div>
@@ -49,7 +49,7 @@
         </div>
 
         <!-- 통계 정보 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="bg-gray-50 rounded-lg p-4">
                 <div class="text-sm font-medium text-gray-500 mb-1">최저 예상가</div>
                 <div id="minPrice" class="text-lg font-bold">로딩중...</div>
@@ -64,7 +64,8 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 mb-8">
+        <!-- 예측 기간 설정 -->
+        <div class="grid grid-cols-1 gap-6 mb-6">
             <div class="bg-gray-50 rounded-lg p-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">예측 기간</label>
                 <div class="flex gap-4">
@@ -80,14 +81,25 @@
         </div>
 
         <!-- 차트 -->
-        <div class="bg-gray-50 rounded-lg p-6">
-            <canvas id="predictionChart" class="w-full" style="height: 400px;"></canvas>
+        <div class="bg-gray-50 rounded-lg shadow-md p-6">
+            <div id="predictionChart" style="width: 100%; height: 500px; position: relative;"></div>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script src="{% static 'js/prediction.js' %}"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js" crossorigin="anonymous"></script>
+    <script>
+        // 라이브러리가 로드되었는지 확인
+        window.addEventListener('load', function() {
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('LightweightCharts 라이브러리 로드 실패');
+            } else {
+                console.log('LightweightCharts 라이브러리 로드 성공');
+            }
+        });
+    </script>
+    <script src="{% static 'js/newPrediction.js' %}"></script>
 {% endblock %}
