@@ -56,7 +56,7 @@ def get_crypto_detail_chart_info(crypto_id, time):
     url = "https://api.upbit.com/v1/candles/"
     params = {  
         'market': crypto_id,  
-        'count': 20,
+        'count': 100,
         'to': ''
     }  
     headers = {"accept": "application/json"}
@@ -75,16 +75,5 @@ def get_crypto_detail_chart_info(crypto_id, time):
     response = requests.get(url + times[time], params=params, headers=headers)
 
     datas = response.json()
-
-    data = [
-        {
-            "x": item["candle_date_time_kst"],
-            "o": item["opening_price"],
-            "h": item["high_price"],
-            "l": item["low_price"],
-            "c": item["trade_price"]
-        }
-        for item in datas
-    ]
     
-    return data
+    return datas
