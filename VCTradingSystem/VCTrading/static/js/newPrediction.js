@@ -18,19 +18,18 @@ function initChart() {
             container.innerHTML = '';
         }
 
-        // 초기 크기 설정
-        const defaultWidth = Math.max(container.clientWidth, 1000);
-        const defaultHeight = Math.max(container.clientHeight, 700);
+        // 실제 컨테이너 크기 계산
+        const containerWidth = container.clientWidth;
+        const containerHeight = 400;
 
         // 차트 생성
         chart = LightweightCharts.createChart(container, {
-            width: defaultWidth,
-            height: defaultHeight,
+            width: containerWidth,
+            height: containerHeight,
             layout: {
                 background: { type: 'solid', color: 'white' },
                 textColor: 'black',
-                fontSize: 14,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+                fontSize: 12,
             },
             grid: {
                 vertLines: { color: '#E0E0E0' },
@@ -42,25 +41,26 @@ function initChart() {
             rightPriceScale: {
                 borderColor: '#DFDFDF',
                 visible: true,
-                autoScale: true,
                 scaleMargins: {
-                    top: 0.1,
-                    bottom: 0.1,
+                    top: 0.2,
+                    bottom: 0.2,
                 },
+                autoScale: true,
             },
             timeScale: {
                 borderColor: '#DFDFDF',
                 timeVisible: true,
                 secondsVisible: false,
-                rightOffset: 2,        // 오른쪽 여백 감소
-                leftOffset: 10,        // 왼쪽 여백 추가
-                barSpacing: 40,
-                minBarSpacing: 20,
-                fixLeftEdge: false,    // 왼쪽 고정 해제
-                fixRightEdge: false,   // 오른쪽 고정 해제
+                barSpacing: 15,        // 캔들 간격 줄임
+                minBarSpacing: 10,     // 최소 캔들 간격 줄임
+                rightOffset: 5,
+                fixLeftEdge: true,
+                fixRightEdge: true,
             },
-            handleScale: true,
-            handleScroll: true,
+            handleScale: {
+                mouseWheel: false,     // 마우스 휠 확대/축소 비활성화
+                pinch: false,          // 핀치 확대/축소 비활성화
+            },
         });
 
         // 캔들스틱 시리즈 추가
@@ -71,25 +71,19 @@ function initChart() {
             borderDownColor: '#4C9BFF',
             wickUpColor: '#FF4C4C',
             wickDownColor: '#4C9BFF',
-            priceFormat: { type: 'price', precision: 0, minMove: 1 },
         });
 
-        // 반응형 설정
+        // 반응형 처리
         const resizeChart = () => {
-            const width = container.clientWidth;
-            const height = Math.max(container.clientHeight, 700);
-            chart.resize(width, height);
+            chart.applyOptions({
+                width: container.clientWidth,
+                height: containerHeight,
+            });
             chart.timeScale().fitContent();
         };
 
-        // 초기 크기 조정
         window.addEventListener('resize', resizeChart);
         
-        // 초기 데이터 로드 후 왼쪽으로 스크롤
-        setTimeout(() => {
-            chart.timeScale().scrollToPosition(-10, false);
-        }, 100);
-
         return true;
     } catch (error) {
         console.error('Chart initialization error:', error);
@@ -159,15 +153,10 @@ function updateDisplay(data) {
     for (let i = 0; i < data.prices.length; i++) {
         const time = Math.floor(new Date(data.dates[i]).getTime() / 1000);
         const currentPrice = data.prices[i];
+        const volatility = currentPrice * 0.02;
 
-        // 변동성 계산
-        const volatility = currentPrice * 0.01;
-
-        // 시가와 종가 계산
         const open = lastPrice;
         const close = currentPrice;
-
-        // 고가와 저가 계산
         const high = Math.max(open, close) + volatility;
         const low = Math.min(open, close) - volatility;
 
@@ -184,16 +173,11 @@ function updateDisplay(data) {
 
     // 차트 업데이트
     if (candleSeries) {
-        candleSeries.setData([]);  // 기존 데이터 초기화
-        requestAnimationFrame(() => {
-            candleSeries.setData(candleData);
+        candleSeries.setData(candleData);
+        setTimeout(() => {
             chart.timeScale().fitContent();
-            
-            // 추가 지연 후 한 번 더 fitContent 실행
-            setTimeout(() => {
-                chart.timeScale().fitContent();
-            }, 100);
-        });
+            chart.timeScale().scrollToPosition(0, false);
+        }, 50);
     }
 }
 
