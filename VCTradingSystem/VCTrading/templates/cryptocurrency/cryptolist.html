@@ -111,10 +111,10 @@
                             <label class="block text-sm font-medium">수량</label>
                             <input type="text" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div> -->
-                        <input type="number" id="quantity" placeholder="수량 입력"
-                            oninput="calculateTotal(this, '{{ detail.trade_price }}', 'total')">
-                        <input type="number" id="total" placeholder="총 금액 입력"
-                            oninput="calculateQuantity(this, '{{ detail.trade_price }}', 'quantity')">
+                        <input type="text" id="quantity" placeholder="수량 입력"
+                            oninput="handleInput(this, '{{ detail.trade_price }}', 'total', true)">
+                        <input type="text" id="total" placeholder="총 금액 입력"
+                            oninput="handleInput(this, '{{ detail.trade_price }}', 'quantity', true)">
                         <button type="submit" class="w-full bg-black text-white py-2 rounded-lg">주문</button>
                     </form>
                 </div>
@@ -220,17 +220,54 @@
         window.location.href = url.toString();
     }
 
-     // 실시간 계산: 입력한 수량 * 현재가 -> 총 금액 계산
-    function calculateTotal(quantityInput, price, totalInputId) {
-        const quantity = parseFloat(quantityInput.value) || 0; // 입력된 수량
-        const total = quantity * price; // 수량 * 현재가
+     /**
+     * 숫자 입력 핸들러: 소숫점 및 숫자만 허용
+     * @param {HTMLElement} inputElement - 입력 필드
+     * @param {string} tradePrice - 거래 가격
+     * @param {string} targetId - 연관된 입력 필드 ID
+     * @param {boolean} allowDecimal - 소숫점 허용 여부
+     */
+    function handleInput(inputElement, tradePrice, targetId, allowDecimal) {
+        let value = inputElement.value;
+
+        // 소숫점 포함 숫자만 허용
+        const regex = allowDecimal ? /^[0-9]*\.?[0-9]*$/ : /^[0-9]*$/;
+
+        if (!regex.test(value)) {
+            inputElement.value = value.slice(0, -1); // 마지막 잘못된 문자 제거
+            return;
+        }
+
+        // 숫자로 변환 후 유효성 검사
+        const numericValue = parseFloat(inputElement.value);
+        if (isNaN(numericValue) || numericValue < 0) {
+            inputElement.value = ''; // 잘못된 값은 비워줌
+            return;
+        }
+
+        // 값 업데이트 후 계산 함수 호출
+        if (inputElement.id === 'quantity') {
+            calculateTotal(inputElement, tradePrice, targetId);
+        } else if (inputElement.id === 'total') {
+            calculateQuantity(inputElement, tradePrice, targetId);
+        }
+    }
+
+    /**
+     * 총 금액 계산: 수량 * 현재가
+     */
+    function calculateTotal(quantityInput, tradePrice, totalInputId) {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const total = quantity * parseFloat(tradePrice);
         document.getElementById(totalInputId).value = total.toFixed(2); // 총 금액 표시
     }
 
-    // 실시간 계산: 입력한 총 금액 / 현재가 -> 수량 계산
-    function calculateQuantity(totalInput, price, quantityInputId) {
-        const total = parseFloat(totalInput.value) || 0; // 입력된 총 금액
-        const quantity = total / price; // 총 금액 / 현재가
+    /**
+     * 수량 계산: 총 금액 / 현재가
+     */
+    function calculateQuantity(totalInput, tradePrice, quantityInputId) {
+        const total = parseFloat(totalInput.value) || 0;
+        const quantity = total / parseFloat(tradePrice);
         document.getElementById(quantityInputId).value = quantity.toFixed(8); // 수량 표시
     }
 
