@@ -403,7 +403,8 @@ class User:
             success, user_id = trading_system.process_login(result)
             if success:
                 request.session['user_id'] = user_id
-                return redirect('dashboard')
+                # return redirect('dashboard')
+                return redirect('crypto_list')
             
             context.update({
                 'error': user_id,
@@ -502,7 +503,7 @@ class User:
                 'virtual_account': virtual_account,
             }
 
-            return render(request, 'management/user_info.html', context)
+            return render(request, 'management/userManagement.html', context)
 
         except Exception as e:
             logger.error(f"User info management error: {str(e)}")
@@ -600,7 +601,7 @@ class InvestmentManager:
                         'orders': current_page
                     })
 
-            return render(request, 'management/investment.html', context)
+            return render(request, 'management/investmentManagement.html', context)
 
         except Exception as e:
             logger.error(f"Investment management error: {str(e)}")
@@ -746,7 +747,7 @@ class AssetTransferManager:
                 'real_accounts': real_accounts,  # 실계좌 목록 추가
                 'transfers': current_page,
             }
-            return render(request, 'management/transfer.html', context)
+            return render(request, 'management/transferManagement.html', context)
         except Exception as e:
             logger.error(f"Transfer management error: {str(e)}")
             return redirect('dashboard')
@@ -1273,7 +1274,7 @@ def prediction_view(request):
             return redirect('login')
 
         # 예측 페이지 렌더링
-        return render(request, 'cryptocurrency/prediction.html', {
+        return render(request, 'cryptocurrency/predictionManagement.html', {
             'user_id': user_id
         })
 

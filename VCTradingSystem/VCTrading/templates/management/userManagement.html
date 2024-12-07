@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/investmentManagement.css' %}">
+{% endblock %}
+{% block content %}
+
+<div class="container-fluid px-4 py-8">
+    <div class="grid grid-cols-12 gap-6">
+        <!-- 버튼 섹션 -->
+        <div class="col-span-3">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="space-y-6">
+                    <a href="{% url 'user_info_management' %}" class="flex items-center justify-center bg-purple-500 text-white rounded-lg p-4 hover:bg-purple-600 transition-colors">
+                        사용자 정보 관리
+                    <a href="{% url 'prediction' %}" class="flex items-center justify-center bg-red-500 text-white rounded-lg p-4 hover:bg-green-600 transition-colors">
+                        가상화폐 예측
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 섹션 -->
+        <div class="col-span-9">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">사용자 정보 관리</h2>
+                <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900">
+                    <span>&larr; 돌아가기</span>
+                </a>
+            </div>
+    
+            {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                <div class="p-4 rounded {% if message.tags == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+    
+            <!-- 탭 버튼 -->
+            <div class="flex space-x-4 mb-6 border-b">
+                <button onclick="switchTab('user-info')" 
+                        id="user-info-tab" 
+                        class="px-4 py-2 border-b-2 border-transparent">
+                    사용자 정보
+                </button>
+                <button onclick="switchTab('account-info')" 
+                        id="account-info-tab" 
+                        class="px-4 py-2 border-b-2 border-transparent">
+                    계좌 정보
+                </button>
+            </div>
+    
+            <!-- 사용자 정보 탭 내용 -->
+            <div id="user-info-content" class="tab-content">
+                <form method="POST" class="space-y-6" name="user_info">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="user_info">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">아이디</label>
+                            <input type="text" value="{{ user.user_id }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50" disabled>
+                        </div>
+    
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">이름</label>
+                            <input type="text" name="user_name" value="{{ user.user_name }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+    
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">생년월일</label>
+                            <input type="date" name="birth_date" value="{{ user.birth_date|date:'Y-m-d' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                        </div>
+    
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">전화번호</label>
+                            <input type="text" 
+                                   name="phone_number" 
+                                   id="phone_number" 
+                                   value="{{ user.phone_number }}" 
+                                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                   maxlength="13">
+                            <p class="text-xs text-gray-500 mt-1">* 숫자만 입력하세요 (하이픈은 자동으로 추가됩니다)</p>
+                        </div>
+                    </div>
+    
+                    <div class="border-t border-gray-200 pt-6 mt-6">
+                        <h3 class="text-lg font-medium mb-4">비밀번호 변경</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">현재 비밀번호</label>
+                                <input type="password" name="current_password" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">새 비밀번호</label>
+                                <input type="password" name="new_password" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="flex justify-between pt-6">
+                        <button type="button" onclick="openWithdrawalModal()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                            회원 탈퇴
+                        </button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                            수정
+                        </button>
+                    </div>
+                </form>
+            </div>
+    
+            <!-- 계좌 정보 탭 내용 -->
+            <div id="account-info-content" class="tab-content hidden">
+                <!-- 가상계좌 정보 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">가상계좌 정보</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <div>
+                            <span class="text-sm text-gray-600">가상계좌 번호:</span>
+                            <span class="ml-2">{{ user.virtual_account.virtual_account_id }}</span>
+                        </div>
+                        <div>
+                            <span class="text-sm text-gray-600">가용 금액:</span>
+                            <span class="ml-2">{{ virtual_account.balance|floatformat:0 }}원</span>
+                        </div>
+                        <form method="POST" class="mt-4" name="transfer_limit">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="transfer_limit">
+                            <div class="flex items-end space-x-4">
+                                <div class="flex-grow">
+                                    <label class="block text-sm text-gray-600">입출금 한도</label>
+                                    <input type="number" name="transfer_limit" 
+                                           value="{{ virtual_account.transfer_limit|default:10000000 }}"
+                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                                    <p class="text-xs text-gray-500 mt-1">기본 한도: 1천만원</p>
+                                </div>
+                                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                                    설정
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+    
+            <!-- 실계좌 목록 -->
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium">실계좌 목록</h3>
+                    <button onclick="openAddAccountModal()" 
+                            class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                        계좌 추가
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    {% for account in real_accounts %}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <div class="font-medium">{{ account.bank_name }}</div>
+                            <div class="text-sm text-gray-600">계좌번호: {{ account.account_id }}</div>
+                            <div class="text-sm text-gray-600">잔액: {{ account.balance|floatformat:0 }}원</div>
+                        </div>
+                        {% if real_accounts.count > 1 %}
+                        <button type="button" 
+                                onclick="openDeleteAccountModal('{{ account.account_id }}', '{{ account.bank_name }}')"
+                                class="text-red-500 hover:text-red-700">
+                            삭제
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+<!-- 회원 탈퇴 모달 -->
+<div id="withdrawalModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      <h3 class="text-lg font-medium mb-4">회원 탈퇴</h3>
+      
+      <p class="mb-4">정말로 탈퇴하시겠습니까? 탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+      
+      <form method="POST" action="{% url 'user_info_management' %}" name="withdraw">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="withdraw">
+          
+          <div class="mb-4">
+              <label for="withdrawal_password" class="block text-sm font-medium text-gray-700">비밀번호 확인</label>
+              <input type="password" 
+                     id="withdrawal_password" 
+                     name="withdrawal_password" 
+                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                     required>
+          </div>
+          
+          <div class="flex justify-end space-x-4">
+              <button type="button" 
+                      onclick="closeWithdrawalModal()"
+                      class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                  취소
+              </button>
+              <button type="submit"
+                      class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                  회원 탈퇴
+              </button>
+          </div>
+      </form>
+  </div>
+</div>
+
+<!-- 계좌 추가 모달 -->
+<div id="addAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      <h3 class="text-lg font-medium mb-4">계좌 추가</h3>
+      <form method="POST" class="space-y-4" name="add_account">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="add_account">
+          
+          <div>
+              <label class="block text-sm font-medium text-gray-700">은행 선택</label>
+              <select name="bank_name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                  <option value="">은행을 선택하세요</option>
+                  <option value="KB국민은행">국민은행</option>
+                  <option value="우리은행">우리은행</option>
+                  <option value="NH농협은행">농협은행</option>
+                  <option value="신한은행">신한은행</option>
+                  <option value="하나은행">하나은행</option>
+                  <option value="IBK기업은행">기업은행</option>
+              </select>
+          </div>
+          
+          <div>
+              <label class="block text-sm font-medium text-gray-700">계좌번호</label>
+              <input type="text" name="account_id" required
+                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                     placeholder="'-' 없이 숫자만 입력">
+          </div>
+
+          <div class="flex justify-end space-x-4">
+              <button type="button" onclick="closeAddAccountModal()" 
+                      class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                  취소
+              </button>
+              <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                  추가
+              </button>
+          </div>
+      </form>
+  </div>
+</div>
+
+<!-- 계좌 삭제 모달 -->
+<div id="deleteAccountModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+      <h3 class="text-lg font-medium mb-4">계좌 삭제</h3>
+      <p class="mb-4">아래 계좌를 정말 삭제하시겠습니까?</p>
+      <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+          <p id="deleteAccountBank" class="font-medium"></p>
+          <p id="deleteAccountNumber" class="text-sm text-gray-600"></p>
+      </div>
+      
+      <form method="POST" name="delete_account">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="delete_account">
+          <input type="hidden" name="account_id" id="deleteAccountId">
+          
+          <div class="flex justify-end space-x-4">
+              <button type="button" 
+                      onclick="closeDeleteAccountModal()"
+                      class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                  취소
+              </button>
+              <button type="submit"
+                      class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                  삭제
+              </button>
+          </div>
+      </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // 탭 전환 함수
+  function switchTab(tabId) {
+      // 모든 탭 컨텐츠 숨기기
+      document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.add('hidden');
+      });
+      
+      // 모든 탭 버튼 스타일 초기화
+      document.querySelectorAll('button[id$="-tab"]').forEach(tab => {
+          tab.classList.remove('border-blue-500');
+          tab.classList.add('border-transparent');
+      });
+      
+      // 선택된 탭 컨텐츠 보이기
+      document.getElementById(`${tabId}-content`).classList.remove('hidden');
+      
+      // 선택된 탭 버튼 스타일 적용
+      document.getElementById(`${tabId}-tab`).classList.remove('border-transparent');
+      document.getElementById(`${tabId}-tab`).classList.add('border-blue-500');
+  }
+  
+  // 모달 제어 함수들
+  function openWithdrawalModal() {
+      document.getElementById('withdrawalModal').classList.remove('hidden');
+  }
+  
+  function closeWithdrawalModal() {
+      document.getElementById('withdrawalModal').classList.add('hidden');
+  }
+  
+  function openAddAccountModal() {
+      document.getElementById('addAccountModal').classList.remove('hidden');
+  }
+  
+  function closeAddAccountModal() {
+      document.getElementById('addAccountModal').classList.add('hidden');
+  }
+  
+  // 계좌 삭제 모달 제어
+  function openDeleteAccountModal(accountId, bankName) {
+      document.getElementById('deleteAccountModal').classList.remove('hidden');
+      document.getElementById('deleteAccountId').value = accountId;
+      document.getElementById('deleteAccountBank').textContent = bankName;
+      document.getElementById('deleteAccountNumber').textContent = `계좌번호: ${accountId}`;
+  }
+  
+  function closeDeleteAccountModal() {
+      document.getElementById('deleteAccountModal').classList.add('hidden');
+  }
+  
+  // 전화번호 포맷팅 함수
+  function formatPhoneNumber(value) {
+      // 모든 하이픈 제거 후 숫자만 추출
+      const phoneNumber = value.replace(/[^0-9]/g, '');
+      
+      if (phoneNumber.length <= 3) {
+          return phoneNumber;
+      }
+      
+      if (phoneNumber.length <= 7) {
+          return phoneNumber.slice(0, 3) + '-' + phoneNumber.slice(3);
+      }
+      
+      const maxLength = phoneNumber.length > 11 ? 11 : phoneNumber.length;
+      return phoneNumber.slice(0, 3) + '-' + 
+             phoneNumber.slice(3, 7) + '-' + 
+             phoneNumber.slice(7, maxLength);
+  }
+  
+  // 전화번호 입력 필드에 이벤트 리스너 추가
+  document.getElementById('phone_number').addEventListener('input', function(e) {
+      let value = e.target.value;
+      
+      // 입력값이 붙여넣기 등으로 들어온 경우에도 처리
+      if (value) {
+          e.target.value = formatPhoneNumber(value);
+      }
+  });
+  
+  // 사용자 정보 수정 폼에 대해서만 전화번호 유효성 검사 수행
+  document.querySelector('form[name="user_info"]').addEventListener('submit', function(e) {
+      const phoneInput = document.getElementById('phone_number');
+      const phoneNumber = phoneInput.value.replace(/[^0-9]/g, '');
+      
+      if (phoneNumber.length < 10 || phoneNumber.length > 11) {
+          e.preventDefault();
+          alert('올바른 전화번호 형식이 아닙니다.');
+          phoneInput.focus();
+          return false;
+      }
+  });
+  
+  // 초기 탭 설정
+  document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab') || 'user-info';
+      switchTab(tab);
+  });
+</script>
+{% endblock %}

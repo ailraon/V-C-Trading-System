@@ -1,0 +1,9 @@
+/* 투자관리 탭 */
+.managementTabs {
+  margin-bottom: 10px;
+
+  & > a {
+    margin-right: 20px;
+    width: 150px;
+  }
+}
