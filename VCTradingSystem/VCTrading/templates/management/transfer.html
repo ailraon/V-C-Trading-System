@@ -77,21 +77,7 @@
                         <div class="transaction-item border-b pb-4" data-type="{{ transfer.transaction_type }}">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-medium">
-                                        {% if transfer.transfer_type == 'DEPOSIT' %}
-                                            {% if transfer.transaction_type == 'CRYPTO' %}
-                                                가상화폐 매도
-                                            {% else %}
-                                                가상계좌 입금
-                                            {% endif %}
-                                        {% else %}
-                                            {% if transfer.transaction_type == 'CRYPTO' %}
-                                                가상화폐 매수
-                                            {% else %}
-                                                가상계좌 출금
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
+                                    <div class="font-medium">{{ transfer.description }}</div>
                                     <div class="text-sm text-gray-500">
                                         {{ transfer.from_account }} → {{ transfer.to_account }}
                                     </div>
@@ -117,10 +103,10 @@
                     <div class="flex justify-center mt-4">
                         <div class="flex space-x-2">
                             {% for i in transfers.paginator.page_range %}
-                                <a href="?page={{ i }}" 
-                                   class="px-3 py-2 rounded {% if transfers.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
-                                    {{ i }}
-                                </a>
+                            <a href="?page={{ i }}" 
+                               class="px-3 py-2 rounded {% if transfers.number == i %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}">
+                                {{ i }}
+                            </a>
                             {% endfor %}
                         </div>
                     </div>
@@ -209,6 +195,7 @@
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}

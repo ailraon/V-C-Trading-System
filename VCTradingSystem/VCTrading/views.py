@@ -617,30 +617,64 @@ class AssetTransferManager:
     def get_transfer_history(self, user):
         """입출금 내역 조회"""
         try:
+            # 가상계좌 입출금 내역 조회
             transfers = TransferHistory.objects.filter(
                 user=user
             ).select_related('account', 'virtual_account').order_by('-transfer_time')
 
+            # 가상화폐 거래 내역 조회
+            crypto_transfers = OrderInfo.objects.filter(
+                user=user
+            ).select_related('crypto').order_by('-executed_time')
+
+            all_transfers = []
+
+            # 가상계좌 거래 내역 처리
             for transfer in transfers:
-                # 입금인 경우
+                transfer_data = {
+                    'transfer_time': transfer.transfer_time,
+                    'transfer_type': transfer.transfer_type,
+                    'amount': transfer.amount,
+                    'transaction_type': 'VIRTUAL',
+                    'description': f"가상계좌 {'입금' if transfer.transfer_type == 'DEPOSIT' else '출금'}"
+                }
+
                 if transfer.transfer_type == 'DEPOSIT':
-                    transfer.from_account = f'{transfer.account.bank_name} {transfer.account.account_id}'
-                    transfer.to_account = transfer.virtual_account.virtual_account_id
-                # 출금인 경우
+                    transfer_data['from_account'] = f'{transfer.account.bank_name} {transfer.account.account_id}'
+                    transfer_data['to_account'] = transfer.virtual_account.virtual_account_id
                 else:
-                    transfer.from_account = transfer.virtual_account.virtual_account_id
-                    transfer.to_account = f'{transfer.account.bank_name} {transfer.account.account_id}'
+                    transfer_data['from_account'] = transfer.virtual_account.virtual_account_id
+                    transfer_data['to_account'] = f'{transfer.account.bank_name} {transfer.account.account_id}'
 
-                if hasattr(transfer, 'crypto_transaction'):
-                    transfer.transaction_type = 'CRYPTO'
-                else:
-                    transfer.transaction_type = 'VIRTUAL'
+                all_transfers.append(transfer_data)
 
-            return transfers
-        
+            # 가상화폐 거래 내역 처리
+            for order in crypto_transfers:
+                transfer_data = {
+                    'transfer_time': order.executed_time,
+                    'transfer_type': 'DEPOSIT' if order.order_type == 'SELL' else 'WITHDRAWAL',
+                    'amount': order.total_amount,
+                    'transaction_type': 'CRYPTO',
+                    'description': f"{order.crypto.crypto_name} {'매도' if order.order_type == 'SELL' else '매수'} ({order.order_quantity} {order.crypto.crypto_type})"
+                }
+
+                if order.order_type == 'SELL':  # 매도 (가상화폐 -> 가상계좌)
+                    transfer_data['from_account'] = f"{order.crypto.crypto_name} 매도"
+                    transfer_data['to_account'] = user.virtual_account.virtual_account_id
+                else:  # 매수 (가상계좌 -> 가상화폐)
+                    transfer_data['from_account'] = user.virtual_account.virtual_account_id
+                    transfer_data['to_account'] = f"{order.crypto.crypto_name} 매수"
+
+                all_transfers.append(transfer_data)
+
+            # 시간순 정렬
+            all_transfers.sort(key=lambda x: x['transfer_time'], reverse=True)
+
+            return all_transfers
+
         except Exception as e:
             logger.error(f"Transfer history error: {str(e)}")
-            return None
+            return []
 
     def process_deposit(self, user, from_account_id, amount):
         """입금 처리"""
@@ -721,33 +755,51 @@ class AssetTransferManager:
     
     # ==========AssetTransferManager Class 뷰 처리 메서드=========
     def handle_transfer_management(self, request, trading_system):
-        """자산입출금 관리 뷰 처리"""
         try:
             user_id = request.session.get('user_id')
             user = trading_system.get_user_info(user_id)
             if not user:
                 return redirect('login')
-            
-            page = request.GET.get('page', 1)
-            
-            virtual_account = trading_system.get_virtual_account(user.virtual_account_id)
-            real_accounts = User().get_user_accounts(user_id)  # 실계좌 목록 조회
-            transfers = self.get_transfer_history(user)
 
-            if not virtual_account or not real_accounts:
-                logger.error("Account information not found")
-                return redirect('dashboard')
-            
-            paginator = Paginator(transfers, 10)
-            current_page = paginator.get_page(page)
-            
+            current_filter = request.GET.get('filter', 'all')
+            page = request.GET.get('page', 1)
+
+            virtual_account = trading_system.get_virtual_account(user.virtual_account_id)
+            real_accounts = User().get_user_accounts(user_id)
+            all_transfers = self.get_transfer_history(user)
+
+            # 필터링
+            if current_filter == 'VIRTUAL':
+                filtered_transfers = [t for t in all_transfers if t['transaction_type'] == 'VIRTUAL']
+            elif current_filter == 'CRYPTO':
+                filtered_transfers = [t for t in all_transfers if t['transaction_type'] == 'CRYPTO']
+            else:
+                filtered_transfers = all_transfers
+
+            # 페이지네이션
+            paginator = Paginator(filtered_transfers, 10)  # 페이지당 10개 항목
+
+            try:
+                current_page = paginator.page(page)
+            except:
+                current_page = paginator.page(1)
+
             context = {
                 'user': user,
                 'virtual_account': virtual_account,
-                'real_accounts': real_accounts,  # 실계좌 목록 추가
+                'real_accounts': real_accounts,
                 'transfers': current_page,
+                'current_filter': current_filter,
+                'show_pagination': len(filtered_transfers) > 10,
+                'total_pages': paginator.num_pages,
+                'current_page': current_page.number,
+                'has_next': current_page.has_next(),
+                'has_previous': current_page.has_previous(),
+                'page_range': paginator.page_range,
             }
+
             return render(request, 'management/transferManagement.html', context)
+
         except Exception as e:
             logger.error(f"Transfer management error: {str(e)}")
             return redirect('dashboard')
