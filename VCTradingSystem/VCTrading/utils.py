@@ -1,3 +1,4 @@
+import json
 from django.http import JsonResponse
 import requests
 
@@ -31,6 +32,9 @@ def get_krw_markets_with_prices_and_change():
             })
 
     return market_data_with_prices
+    # market_data_json = json.dumps(market_data_with_prices, ensure_ascii=False)  # ensure_ascii=False는 한글을 처리
+    # print("DEBUG: market_data_json =", market_data_json)
+    # return market_data_json
 
 def get_crypto_detail_info(crypto_id, market_data):
     """가상화폐 상세정보"""

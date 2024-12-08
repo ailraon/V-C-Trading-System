@@ -1078,37 +1078,31 @@ def cryptolist_view(request):
     crypto = cryptocurrency()
 
     try:
-        market_data = get_krw_markets_with_prices_and_change()
+        try:
+            market_data = get_krw_markets_with_prices_and_change()
+        except Exception as e:
+            return render(request, "cryptocurrency/cryptolist.html", {"error": f"Failed to fetch market data: {e}"})
 
         crypto_code = request.GET.get('code', 'KRW-BTC')
         transfer_type = request.GET.get('type', 'buy')
         candle_type = request.GET.get('time', 'm1')
         
         context = {
-            "market_data": market_data,
             "crypto_code" : crypto_code,
             "transfer_type" : transfer_type,
-            "candle_type" : candle_type
+            "candle_type" : candle_type,
+            "market_data": json.dumps(market_data, ensure_ascii=False)
         }
 
         if crypto_code:
             crypto_detail = get_crypto_detail_info(crypto_code, market_data)
             context.update({
-                "market_data": market_data,
-                "crypto_code" : crypto_code,
-                "transfer_type" : transfer_type,
-                "candle_type" : candle_type,
                 "crypto_detail" : crypto_detail
             })
             if candle_type:
                 candle_data = get_crypto_detail_chart_info(crypto_code, candle_type)
                 context.update({
-                    "market_data": market_data,
-                    "crypto_code" : crypto_code,
-                    "transfer_type" : transfer_type,
-                    "candle_type" : candle_type,
-                    "crypto_detail" : crypto_detail,
-                    "candle_data" : json.dumps(candle_data)
+                    "candle_data" : json.dumps(candle_data, ensure_ascii=False)
                 })
 
         return render(request, "cryptocurrency/cryptolist.html", context)
