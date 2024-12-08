@@ -403,7 +403,6 @@ class User:
             success, user_id = trading_system.process_login(result)
             if success:
                 request.session['user_id'] = user_id
-                # return redirect('dashboard')
                 return redirect('crypto_list')
             
             context.update({
@@ -508,7 +507,7 @@ class User:
         except Exception as e:
             logger.error(f"User info management error: {str(e)}")
             messages.error(request, "사용자 정보 처리 중 오류가 발생했습니다.")
-            return redirect('dashboard')
+            return redirect('crypto_list')
     
     
 class InvestmentManager:
@@ -606,7 +605,7 @@ class InvestmentManager:
         except Exception as e:
             logger.error(f"Investment management error: {str(e)}")
             messages.error(request, "투자내역 조회 중 오류가 발생했습니다.")
-            return redirect('dashboard')
+            return redirect('crypto_list')
 
 
 class AssetTransferManager:
@@ -761,6 +760,7 @@ class AssetTransferManager:
             if not user:
                 return redirect('login')
 
+            # URL에서 필터 타입과 페이지 번호 가져오기
             current_filter = request.GET.get('filter', 'all')
             page = request.GET.get('page', 1)
 
@@ -768,7 +768,7 @@ class AssetTransferManager:
             real_accounts = User().get_user_accounts(user_id)
             all_transfers = self.get_transfer_history(user)
 
-            # 필터링
+            # 먼저 필터링 적용
             if current_filter == 'VIRTUAL':
                 filtered_transfers = [t for t in all_transfers if t['transaction_type'] == 'VIRTUAL']
             elif current_filter == 'CRYPTO':
@@ -776,7 +776,7 @@ class AssetTransferManager:
             else:
                 filtered_transfers = all_transfers
 
-            # 페이지네이션
+            # 필터링된 데이터로 페이지네이션
             paginator = Paginator(filtered_transfers, 10)  # 페이지당 10개 항목
 
             try:
@@ -789,7 +789,7 @@ class AssetTransferManager:
                 'virtual_account': virtual_account,
                 'real_accounts': real_accounts,
                 'transfers': current_page,
-                'current_filter': current_filter,
+                'current_filter': current_filter,  # 현재 필터 상태 전달
                 'show_pagination': len(filtered_transfers) > 10,
                 'total_pages': paginator.num_pages,
                 'current_page': current_page.number,
@@ -802,7 +802,7 @@ class AssetTransferManager:
 
         except Exception as e:
             logger.error(f"Transfer management error: {str(e)}")
-            return redirect('dashboard')
+            return redirect('crypto_list')
 
     def handle_process_transfer(self, request, trading_system):
         """입출금 처리 뷰"""
@@ -1036,20 +1036,6 @@ class VCTradingSystem:
             'message': '잘못된 요청입니다.'
         })
     
-    # ==========VCTradingSystem Class 뷰 처리 메서드=========
-    def handle_dashboard(self, request):
-        """대시보드 뷰 처리"""
-        try:
-            user_id = request.session.get('user_id')
-            user = self.get_user_info(user_id)
-            if not user:
-                return redirect('login')
-            
-            return render(request, 'dashboard/dashboard.html', {'user': user})
-        except Exception as e:
-            logger.error(f"Dashboard error: {str(e)}")
-            return redirect('login')
-
 
 # 뷰 함수들은 이제 단순히 클래스의 메서드를 호출하는 래퍼가 됩니다:
 def signup_view(request):
@@ -1068,10 +1054,6 @@ def user_info_management_view(request):
     user = User()
     trading_system = VCTradingSystem()
     return user.handle_user_info_management(request, trading_system)
-
-def dashboard_view(request):
-    trading_system = VCTradingSystem()
-    return trading_system.handle_dashboard(request)
 
 def investment_management_view(request):
     trading_system = VCTradingSystem()
@@ -1327,7 +1309,7 @@ def prediction_view(request):
     except Exception as e:
         logger.error(f"Prediction view error: {str(e)}")
         messages.error(request, '예측 페이지를 불러오는 중 오류가 발생했습니다.')
-        return redirect('dashboard')
+        return redirect('crypto_list')
 
 def get_prediction_data(request, coin_id):
     """
