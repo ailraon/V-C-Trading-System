@@ -8,6 +8,7 @@
                 type="text"
                 placeholder="검색어를 입력해주세요."
                 class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                id="searchInput"
             />
         </div>
         <!-- <div class="mb-4 flex space-x-2">
@@ -24,8 +25,8 @@
                         <th class="px-4 py-2 text-left font-bold text-gray-600">변동폭</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for data in market_data %}
+                <tbody id="cryptoTableBody">
+                    <!-- {% for data in market_data %}
                     <tr class="border-b hover:bg-gray-100" onclick="goToDetail('{{ data.market }}', 'buy')" style="cursor: pointer;">
                         <td class="px-4 py-2">
                             <span class="font-medium text-gray-900">{{ data.korean_name }}</span>
@@ -37,9 +38,10 @@
                             {{ data.change_rate|floatformat:1 }}%
                         </td>
                     </tr>
-                    {% endfor %}
+                    {% endfor %} -->
                 </tbody>
             </table>
+            <div id="cryptolist"></div>
         </div>
     </div>
 
@@ -68,8 +70,11 @@
             </div>
 
             <!-- 차트 -->
-            <div class="relative mb-4">
+            <!-- <div class="relative mb-4">
                 <canvas id="cryptoChart" width="400" height="200"></canvas>
+            </div> -->
+            <div class="bg-gray-50 rounded-lg shadow-md p-6" style="margin-bottom: 20px;">
+                <div id="cryptoChart" style="width: 100%; height: 400px; position: relative; "></div>
             </div>
 
             <!-- 하단 -->
@@ -78,27 +83,40 @@
                 <div>
                     <h3 class="text-lg font-bold mb-2">시세</h3>
                     <ul class="text-red-500">
-                        <li>매도1: 0,000,000</li>
-                        <li>매도2: 0,000,000</li>
+                        <li>시가: {{ detail.opening_price }}</li>
+                        <li>고가: {{ detail.high_price }}</li>
+                        <li>저가: {{ detail.low_price }}</li>
+                        <li>종가: {{ detail.trade_price }}</li>
                     </ul>
                     <ul class="text-blue-500">
-                        <li>매수1: 0,000,000</li>
-                        <li>매수2: 0,000,000</li>
                     </ul>
                 </div>
 
                 <!-- 주문 -->
                 <div>
-                    <h3 class="text-lg font-bold mb-2">매수 / 매도</h3>
-                    <form>
-                        <div class="mb-2">
+                    <div class="flex space-x-4 mb-6">
+                        <button class="px-4 py-2 rounded {% if transfer_type == 'sell' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" 
+                                onclick="change('sell')">
+                            매도
+                        </button>
+                        <button class="px-4 py-2 rounded {% if transfer_type == 'buy' %}bg-blue-500 text-white{% else %}bg-gray-200{% endif %}" 
+                            onclick="change('buy')">
+                            매수
+                        </button>
+                    </div>
+                    <form onsubmit="handleTrade(event, '{{ detail.market }}', '{{ detail.trade_price }}', 'quantity', 'total')">
+                        <!-- <div class="mb-2">
                             <label class="block text-sm font-medium">가격</label>
                             <input type="text" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div class="mb-2">
                             <label class="block text-sm font-medium">수량</label>
                             <input type="text" class="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
+                        </div> -->
+                        <input type="text" id="quantity" placeholder="수량 입력"
+                            oninput="handleInput(this, '{{ detail.trade_price }}', 'total', true)">
+                        <input type="text" id="total" placeholder="총 금액 입력"
+                            oninput="handleInput(this, '{{ detail.trade_price }}', 'quantity', true)">
                         <button type="submit" class="w-full bg-black text-white py-2 rounded-lg">주문</button>
                     </form>
                 </div>
@@ -110,29 +128,188 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<!-- <script src="{% static 'js/cryptoSearch.js' %}"></script> -->
+<!-- <script src="{% static 'js/cryptoDetail.js' %}"></script> -->
 <script>
-    const ctx = document.getElementById('cryptoChart').getContext('2d');
-    const cryptoChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['10:00', '10:01', '10:02', '10:03'], // 시간 데이터
-            datasets: [{
-                label: '가격',
-                data: [10000, 10200, 10100, 10500], // 가격 데이터
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: { title: { display: true, text: '시간' } },
-                y: { title: { display: true, text: '가격 (KRW)' }, beginAtZero: false }
-            }
-        }
-    });
+    // 가상화폐 검색 기능
+const marketData = JSON.parse('{{ market_data|safe|escapejs }}');
+// 초성 추출 함수
+const getHangulInitials = (text) => {
+  const INITIALS = [
+    'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+  ];
+  const HANGUL_START = 44032; // "가"의 유니코드
+  const HANGUL_END = 55203; // "힣"의 유니코드
+
+  return text
+    .split('')
+    .map((char) => {
+      const charCode = char.charCodeAt(0);
+      if (charCode >= HANGUL_START && charCode <= HANGUL_END) {
+        const index = Math.floor((charCode - HANGUL_START) / 588); // 초성 인덱스 계산
+        return INITIALS[index];
+      }
+      return char; // 한글이 아니면 그대로 반환
+    })
+    .join('');
+};
+
+// 필터링 함수
+const filterMarketData = (searchQuery) => {
+  const normalizedQuery = getHangulInitials(searchQuery).toLowerCase();
+
+  return marketData.filter((item) => {
+    const koreanInitials = getHangulInitials(item.korean_name).toLowerCase();
+    const englishName = item.english_name.toLowerCase();
+    const koreanName = item.korean_name.toLowerCase();
+
+    return (
+      koreanName.includes(normalizedQuery) ||
+      koreanInitials.includes(normalizedQuery) ||
+      englishName.includes(normalizedQuery)
+    );
+  });   
+};
+
+// 테이블 업데이트 함수
+const updateTable = (filteredData) => {
+  const tableBody = document.getElementById('cryptoTableBody');
+  tableBody.innerHTML = ''; // 기존 데이터 삭제
+  const cryptolist = document.getElementById('cryptolist');
+  cryptolist.innerHTML = '';
+
+  console.log(filteredData);
+
+    if (!filteredData.length) {
+        const errormessage = document.createElement('div');
+        errormessage.innerHTML = "검색 결과가 없습니다.";
+        errormessage.style.width = '100%';
+
+        cryptolist.appendChild(errormessage);
+        console.log("추가 완료");
+    }
+
+  filteredData.forEach((data) => {
+    const row = document.createElement('tr');
+    row.className = 'border-b hover:bg-gray-100';
+    row.style.cursor = 'pointer';
+
+    // onclick 이벤트 추가
+    row.setAttribute('onclick', `goToDetail('${data.market}', 'buy')`);
+
+    // 내부 HTML 설정
+    row.innerHTML = `
+        <td class="px-4 py-2">
+            <span class="font-medium text-gray-900">${data.korean_name}</span>
+            <br />
+            <span class="text-sm text-gray-500">${data.english_name}</span>
+        </td>
+        <td class="px-4 py-2 font-semibold text-gray-700">${data.current_price.toLocaleString()} KRW</td>
+        <td class="px-4 py-2 ${data.change_rate > 0 ? 'text-green-500' : 'text-red-500'} font-semibold">
+            ${data.change_rate.toFixed(1)}%
+        </td>
+    `;
+
+    // 행 추가
+    tableBody.appendChild(row);
+  });
+};
+
+// 디바운스 함수
+const debounce = (func, delay) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+};
+
+// 검색 입력 핸들러
+const handleSearch = debounce((event) => {
+  const searchQuery = event.target.value;
+  const filteredData = filterMarketData(searchQuery);
+  updateTable(filteredData);
+}, 300); // 300ms 딜레이
+
+// 초기 데이터 렌더링
+updateTable(marketData);
+
+// 검색 이벤트 연결
+document.getElementById('searchInput').addEventListener('input', handleSearch);
+    // 가상화폐 목록 데이터
+    // 차트 코드
+const rawData = JSON.parse('{{ candle_data|safe|escapejs }}');
+// console.log('rawData Data:', rawData);
+
+// 데이터를 캔들 차트 형식으로 변환
+const data = rawData.map(d => ({
+  date: new Date(d.candle_date_time_kst), // KST 기준 날짜를 Date 객체로 변환
+  open: d.opening_price,
+  high: d.high_price,
+  low: d.low_price,
+  close: d.trade_price,
+}));
+
+// 캔들 차트의 크기와 여백 설정
+const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+const width = 800 - margin.left - margin.right;
+const height = 300 - margin.top - margin.bottom;
+
+// X축과 Y축 범위 설정
+const x = d3.scaleBand()
+  .domain(data.map(d => d.date))
+  .range([0, width])
+  .padding(0.2);
+
+const y = d3.scaleLinear()
+  .domain([d3.min(data, d => d.low), d3.max(data, d => d.high)])
+  .nice()
+  .range([height, 0]);
+
+// SVG 생성
+const svg = d3.select("#cryptoChart")
+  .append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+// X축 추가
+// svg.append("g")
+//     .attr("transform", `translate(0,${height})`)
+//     .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%H:%M:%S")));
+
+// Y축 추가
+svg.append("g")
+  .call(d3.axisLeft(y));
+
+// 캔들 막대의 스템 추가 (고가~저가)
+svg.selectAll("line.stem")
+  .data(data)
+  .enter()
+  .append("line")
+  .attr("class", "stem")
+  .attr("x1", d => x(d.date) + x.bandwidth() / 2)
+  .attr("x2", d => x(d.date) + x.bandwidth() / 2)
+  .attr("y1", d => y(d.high))
+  .attr("y2", d => y(d.low))
+  .attr("stroke", "black");
+
+// 캔들 막대 (시가~종가)
+svg.selectAll("rect.candle")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", "candle")
+    .attr("x", d => x(d.date))
+    .attr("y", d => y(Math.max(d.open, d.close)))
+    .attr("width", x.bandwidth())
+    .attr("height", d => Math.abs(y(d.open) - y(d.close)))
+    .attr("fill", d => d.open > d.close ? "red" : "green"); // 시가 > 종가: 빨간색, 시가 < 종가: 초록색
+
+    // 가상화폐 목록 기능
+
     // 가상화폐 클릭 시 URL 파라미터 변경
     function goToDetail(code, type) {
         const url = new URL(window.location.href);
@@ -145,6 +322,142 @@
         const url = new URL(window.location.href);
         url.searchParams.set('type', type);
         window.location.href = url.toString();
+    }
+
+    /**
+     * 숫자 입력 핸들러: 소숫점 및 숫자만 허용
+     * @param {HTMLElement} inputElement - 입력 필드
+     * @param {string} tradePrice - 거래 가격
+     * @param {string} targetId - 연관된 입력 필드 ID
+     * @param {boolean} allowDecimal - 소숫점 허용 여부
+     */
+    function handleInput(inputElement, tradePrice, targetId, allowDecimal) {
+        let value = inputElement.value;
+
+        // 소숫점 포함 숫자만 허용
+        const regex = allowDecimal ? /^[0-9]*\.?[0-9]*$/ : /^[0-9]*$/;
+
+        if (!regex.test(value)) {
+            inputElement.value = value.slice(0, -1); // 마지막 잘못된 문자 제거
+            return;
+        }
+
+        // 숫자로 변환 후 유효성 검사
+        const numericValue = parseFloat(inputElement.value);
+        if (isNaN(numericValue) || numericValue < 0) {
+            inputElement.value = ''; // 잘못된 값은 비워줌
+            return;
+        }
+
+        // 값 업데이트 후 계산 함수 호출
+        if (inputElement.id === 'quantity') {
+            calculateTotal(inputElement, tradePrice, targetId);
+        } else if (inputElement.id === 'total') {
+            calculateQuantity(inputElement, tradePrice, targetId);
+        }
+    }
+
+    /**
+     * 총 금액 계산: 수량 * 현재가
+     */
+    function calculateTotal(quantityInput, tradePrice, totalInputId) {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const total = quantity * parseFloat(tradePrice);
+        document.getElementById(totalInputId).value = total.toFixed(2); // 총 금액 표시
+    }
+
+    /**
+     * 수량 계산: 총 금액 / 현재가
+     */
+    function calculateQuantity(totalInput, tradePrice, quantityInputId) {
+        const total = parseFloat(totalInput.value) || 0;
+        const quantity = total / parseFloat(tradePrice);
+        document.getElementById(quantityInputId).value = quantity.toFixed(8); // 수량 표시
+    }
+
+    /** 
+     * 그래프 
+    */
+
+    // 토스트 메시지 표시 함수
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+            type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+            type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' :
+            'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+        }`;
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // 매도/매수 요청 함수
+    async function handleTrade(event, cryptoId, marketPrice, quantityInputId, totalInputId) {
+        event.preventDefault();
+
+        // URL 파라미터에서 타입 확인 (BUY or SELL)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tradeType = urlParams.get('type');
+
+        if (!tradeType || (tradeType !== 'buy' && tradeType !== 'sell')) {
+            showToast('Invalid trade type.', 'error');
+            return;
+        }
+
+        // 입력 값 가져오기
+        // const quantity = parseFloat(quantityInput.value);
+        // const total = parseFloat(totalInput.value);
+        
+        const QuantityInput = document.getElementById(quantityInputId);
+        const quantityValue = parseFloat(QuantityInput.value);
+
+        const TotalInput = document.getElementById(totalInputId);
+        const totalValue = parseFloat(TotalInput.value);
+
+        if (!quantityValue || quantityValue <= 0) {
+            showToast('Please enter a valid quantity.', 'error');
+            return;
+        }
+
+        // API URL 설정
+        const apiUrl = tradeType === 'buy' ? "{% url 'crypto_buy' %}" : "{% url 'crypto_sell' %}";
+
+        // 요청 데이터
+        const requestData = {
+            // user_id: 'user123', // 실제 사용자 ID로 교체
+            crypto_id: cryptoId,
+            quantity: quantityValue,
+            market_price: marketPrice,
+            total_price: totalValue
+        };
+
+        console.log(requestData);
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Django CSRF 토큰
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                location.reload(); // 성공 시 페이지 새로고침
+            } else {
+                showToast(result.message, 'error');
+            }
+        } catch (error) {
+            showToast('An error occurred while processing your request.', 'error');
+        }
     }
 </script>
 {% endblock %}

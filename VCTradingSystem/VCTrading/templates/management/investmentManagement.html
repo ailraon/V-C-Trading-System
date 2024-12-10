@@ -3,32 +3,41 @@
 
 <div class="container-fluid px-4 py-8">
     <div class="grid grid-cols-12 gap-6">
-        <!-- 계좌 정보 섹션 -->
-        <div class="col-span-3">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-bold mb-6">계좌 정보</h2>
-                <div class="space-y-6">
-                    <div>
-                        <div class="text-sm text-gray-600 mb-2">가상계좌번호</div>
-                        <div class="text-lg">{{ user.virtual_account.virtual_account_id }}</div>
-                    </div>
-                    <div>
-                        <div class="text-sm text-gray-600 mb-2">가용 금액</div>
-                        <div class="text-lg font-semibold">{{ user.virtual_account.balance|floatformat:0 }} 원</div>
-                    </div>
-                </div>
+        <!-- 메인 콘텐츠 섹션 - 전체 너비 -->
+        <div class="col-span-12">
+            <!-- 네비게이션 버튼 -->
+            <div class="flex gap-4 mb-6">
+                <a href="{% url 'investment_management' %}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                    투자내역 관리
+                </a>
+                <a href="{% url 'transfer_management' %}" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                    자산입출금 관리
+                </a>
             </div>
-        </div>
 
-        <!-- 메인 콘텐츠 섹션 -->
-        <div class="col-span-11">
             <div class="bg-white rounded-lg shadow-md p-4">
                 <!-- 제목과 뒤로가기 버튼 -->
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">투자내역 관리</h2>
-                    <a href="{% url 'dashboard' %}" class="text-gray-600 hover:text-gray-900">
+                    <a href="{% url 'crypto_list' %}" class="text-gray-600 hover:text-gray-900">
                         <span>&larr; 돌아가기</span>
                     </a>
+                </div>
+
+                <!-- 계좌 정보 섹션 -->
+                <div class="mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-sm text-gray-500 mb-1">가상계좌번호</div>
+                                <div class="text-lg font-medium">{{ user.virtual_account.virtual_account_id }}</div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500 mb-1">가용 금액</div>
+                                <div class="text-lg font-semibold">{{ user.virtual_account.balance|floatformat:0 }} 원</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 메인 탭 -->
@@ -67,41 +76,41 @@
 
                     <!-- 보유 자산 목록 -->
                     <div class="overflow-x-auto">
-                        <table class="w-full table-auto">
+                        <table class="min-w-full table-auto">
                             <thead>
                                 <tr class="bg-gray-50">
-                                    <th class="px-4 py-2 text-left">가상화폐</th>
-                                    <th class="px-4 py-2 text-right">보유수량</th>
-                                    <th class="px-4 py-2 text-right">평균매수가</th>
-                                    <th class="px-4 py-2 text-right">현재가</th>
-                                    <th class="px-4 py-2 text-right">총 매수금액</th>
-                                    <th class="px-4 py-2 text-right">평가금액</th>
-                                    <th class="px-4 py-2 text-right">평가손익</th>
-                                    <th class="px-4 py-2 text-right">수익률</th>
+                                    <th class="px-4 py-3 text-left">가상화폐</th>
+                                    <th class="px-4 py-3 text-right">보유수량</th>
+                                    <th class="px-4 py-3 text-right">평균매수가</th>
+                                    <th class="px-4 py-3 text-right">현재가</th>
+                                    <th class="px-4 py-3 text-right">총 매수금액</th>
+                                    <th class="px-4 py-3 text-right">평가금액</th>
+                                    <th class="px-4 py-3 text-right">평가손익</th>
+                                    <th class="px-4 py-3 text-right">수익률</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {% for portfolio in portfolios %}
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-2">
+                                    <td class="px-4 py-4">
                                         <div class="font-medium">{{ portfolio.crypto.crypto_name }}</div>
                                         <div class="text-sm text-gray-500">{{ portfolio.crypto.crypto_type }}</div>
                                     </td>
-                                    <td class="px-4 py-2 text-right">{{ portfolio.total_quantity|floatformat:8 }}</td>
-                                    <td class="px-4 py-2 text-right">{{ portfolio.avg_buy_price|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ portfolio.crypto.crypto_price|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ portfolio.total_investment|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ portfolio.current_valuation|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right {% if portfolio.profit >= 0 %}text-red-600{% else %}text-blue-600{% endif %}">
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ portfolio.total_quantity|floatformat:8 }}</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ portfolio.avg_buy_price|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ portfolio.crypto.crypto_price|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ portfolio.total_investment|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ portfolio.current_valuation|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap {% if portfolio.profit >= 0 %}text-red-600{% else %}text-blue-600{% endif %}">
                                         {% if portfolio.profit >= 0 %}+{% endif %}{{ portfolio.profit|floatformat:0 }} 원
                                     </td>
-                                    <td class="px-4 py-2 text-right {% if portfolio.profit_rate >= 0 %}text-red-600{% else %}text-blue-600{% endif %}">
+                                    <td class="px-4 py-4 text-right whitespace-nowrap {% if portfolio.profit_rate >= 0 %}text-red-600{% else %}text-blue-600{% endif %}">
                                         {% if portfolio.profit_rate >= 0 %}+{% endif %}{{ portfolio.profit_rate|floatformat:2 }}%
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="px-4 py-2 text-center">보유중인 가상화폐가 없습니다.</td>
+                                    <td colspan="8" class="px-4 py-4 text-center">보유중인 가상화폐가 없습니다.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -125,36 +134,36 @@
 
                     <!-- 거래내역 테이블 -->
                     <div class="overflow-x-auto">
-                        <table class="w-full table-auto">
+                        <table class="min-w-full table-auto">
                             <thead>
                                 <tr class="bg-gray-50">
-                                    <th class="px-4 py-2 text-left">거래시간</th>
-                                    <th class="px-4 py-2 text-left">가상화폐</th>
-                                    <th class="px-4 py-2 text-right">당시 현재가</th>
+                                    <th class="px-4 py-3 text-left">거래시간</th>
+                                    <th class="px-4 py-3 text-left">가상화폐</th>
+                                    <th class="px-4 py-3 text-right">당시 현재가</th>
                                     {% if transaction_type == 'sell' %}
-                                    <th class="px-4 py-2 text-right">매도수량</th>
-                                    <th class="px-4 py-2 text-right">매도수익</th>
+                                    <th class="px-4 py-3 text-right">매도수량</th>
+                                    <th class="px-4 py-3 text-right">매도수익</th>
                                     {% else %}
-                                    <th class="px-4 py-2 text-right">매수수량</th>
-                                    <th class="px-4 py-2 text-right">매수비용</th>
+                                    <th class="px-4 py-3 text-right">매수수량</th>
+                                    <th class="px-4 py-3 text-right">매수비용</th>
                                     {% endif %}
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 {% for order in orders %}
                                 <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-2">{{ order.executed_time|date:"Y-m-d H:i" }}</td>
-                                    <td class="px-4 py-2">
+                                    <td class="px-4 py-4 whitespace-nowrap">{{ order.executed_time|date:"Y-m-d H:i" }}</td>
+                                    <td class="px-4 py-4">
                                         <div class="font-medium">{{ order.crypto.crypto_name }}</div>
                                         <div class="text-sm text-gray-500">{{ order.crypto.crypto_type }}</div>
                                     </td>
-                                    <td class="px-4 py-2 text-right">{{ order.market_price|floatformat:0 }} 원</td>
-                                    <td class="px-4 py-2 text-right">{{ order.order_quantity|floatformat:8 }}</td>
-                                    <td class="px-4 py-2 text-right">{{ order.total_amount|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ order.market_price|floatformat:0 }} 원</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ order.order_quantity|floatformat:8 }}</td>
+                                    <td class="px-4 py-4 text-right whitespace-nowrap">{{ order.total_amount|floatformat:0 }} 원</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="px-4 py-2 text-center">
+                                    <td colspan="5" class="px-4 py-4 text-center">
                                         {% if transaction_type == 'sell' %}매도{% else %}매수{% endif %} 거래내역이 없습니다.
                                     </td>
                                 </tr>
@@ -165,7 +174,7 @@
 
                     <!-- 페이지네이션 -->
                     {% if orders.paginator.num_pages > 1 %}
-                    <div class="flex justify-center mt-4">
+                    <div class="flex justify-center mt-6">
                         <div class="flex space-x-2">
                             {% for i in orders.paginator.page_range %}
                             <a href="?tab=history&type={{ transaction_type }}&page={{ i }}" 
@@ -205,5 +214,5 @@
             });
         });
     });
-    </script>
-    {% endblock %}
+</script>
+{% endblock %}

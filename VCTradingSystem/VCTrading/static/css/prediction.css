@@ -1,9 +1,13 @@
-/* Base styles */
+/* Base Styles */
 .prediction-wrapper {
     padding: 2.5rem;
     max-width: 80rem;
     margin: 0 auto;
-    background-color: rgb(249, 250, 251);
+    background-color: #f9fafb; /* 밝은 배경 */
+}
+
+.container {
+    padding: 2rem;
 }
 
 /* Header */
@@ -15,11 +19,11 @@
 .prediction-header h2 {
     font-size: 1.875rem;
     font-weight: bold;
-    color: rgb(17, 24, 39);
+    color: #111827;
     margin-bottom: 1.25rem;
 }
 
-/* Search controls */
+/* Search Controls */
 .prediction-controls {
     display: flex;
     justify-content: center;
@@ -27,10 +31,10 @@
     flex-wrap: wrap;
 }
 
-.form-input, 
+.form-input,
 .coin-select {
     padding: 0.875rem 1rem;
-    border: 1px solid rgb(209, 213, 219);
+    border: 1px solid #d1d5db;
     border-radius: 9999px;
     min-width: 220px;
     background-color: white;
@@ -39,31 +43,32 @@
 
 .form-input:hover,
 .coin-select:hover {
-    border-color: rgb(59, 130, 246);
-    background-color: rgb(249, 250, 251);
+    border-color: #3b82f6;
+    background-color: #f9fafb;
 }
 
 .form-input:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgb(59, 130, 246);
+    box-shadow: 0 0 0 2px #3b82f6;
     border-color: transparent;
 }
 
+/* Buttons */
 .prediction-btn {
     padding: 0.875rem 1.5rem;
-    background-image: linear-gradient(to right, rgb(59, 130, 246), rgb(96, 165, 250));
+    background-color: #4caf50; /* 녹색 버튼 */
     color: white;
     font-weight: bold;
-    border-radius: 9999px;
+    border-radius: 0.25rem;
     transition: all 0.2s;
 }
 
 .prediction-btn:hover {
-    background-image: linear-gradient(to right, rgb(37, 99, 235), rgb(59, 130, 246));
+    background-color: #388e3c;
     transform: translateY(-2px);
 }
 
-/* Price cards */
+/* Price Cards */
 .price-info-container {
     display: flex;
     flex-direction: column;
@@ -92,17 +97,17 @@
 
 .price-card h3 {
     font-size: 1.25rem;
-    color: rgb(75, 85, 99);
+    color: #4b5563;
     margin-bottom: 1rem;
 }
 
 .price-value {
     font-size: 1.875rem;
     font-weight: bold;
-    color: rgb(59, 130, 246);
+    color: #3b82f6;
 }
 
-/* Stat cards */
+/* Stat Cards */
 .prediction-stats {
     display: flex;
     flex-direction: column;
@@ -134,53 +139,89 @@
 
 .stat-card h4 {
     font-size: 1.125rem;
-    color: rgb(75, 85, 99);
+    color: #4b5563;
     margin-bottom: 0.5rem;
 }
 
 .stat-value {
     font-size: 1.5rem;
     font-weight: bold;
-    color: rgb(17, 24, 39);
+    color: #111827;
 }
 
-/* Chart container */
-.chart-container {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    height: 500px;
+/* Chart Container */
+.chart-wrapper {
+    width: 100%;
+    height: 400px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin: 0 auto;
+}
+
+#predictionChart {
+    width: 100%;
+    height: 400px !important;
+    position: relative;
+    margin-top: 20px;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .chart-wrapper {
+        height: 300px;
+    }
 }
 
 /* States */
 .positive-value {
-    color: rgb(22, 163, 74);
+    color: #16a34a;
 }
 
 .negative-value {
-    color: rgb(220, 38, 38);
+    color: #dc2626;
 }
 
 .error-state {
-    color: rgb(239, 68, 68);
+    color: #ef4444;
     font-style: italic;
     font-size: 0.875rem;
     text-align: center;
 }
 
-/* Loading spinner */
+/* Loading Spinner */
 .loading-spinner {
-    border: 4px solid rgb(229, 231, 235);
+    border: 4px solid #e5e7eb;
     border-radius: 9999px;
     width: 1.5rem;
     height: 1.5rem;
-    border-top-color: rgb(59, 130, 246);
+    border-top-color: #3b82f6;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to { 
+    to {
         transform: rotate(360deg);
     }
+}
+
+/* Utility Classes */
+.mt-6 {
+    margin-top: 1.5rem;
+}
+
+.prediction-chart-container {
+    width: 100% !important;
+    height: 700px !important;
+    min-height: 700px;
+    position: relative;
+    margin: 0 auto;
+}
+
+.bg-gray-50 {
+    background-color: #f9fafb;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

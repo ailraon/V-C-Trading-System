@@ -1,3 +1,5 @@
+import json
+from django.http import JsonResponse
 import requests
 
 def get_krw_markets_with_prices_and_change():
@@ -30,6 +32,9 @@ def get_krw_markets_with_prices_and_change():
             })
 
     return market_data_with_prices
+    # market_data_json = json.dumps(market_data_with_prices, ensure_ascii=False)  # ensure_ascii=False는 한글을 처리
+    # print("DEBUG: market_data_json =", market_data_json)
+    # return market_data_json
 
 def get_crypto_detail_info(crypto_id, market_data):
     """가상화폐 상세정보"""
@@ -55,7 +60,7 @@ def get_crypto_detail_chart_info(crypto_id, time):
     url = "https://api.upbit.com/v1/candles/"
     params = {  
         'market': crypto_id,  
-        'count': 20,
+        'count': 100,
         'to': ''
     }  
     headers = {"accept": "application/json"}
@@ -72,5 +77,7 @@ def get_crypto_detail_chart_info(crypto_id, time):
     }
 
     response = requests.get(url + times[time], params=params, headers=headers)
+
+    datas = response.json()
     
-    return response.text
+    return datas

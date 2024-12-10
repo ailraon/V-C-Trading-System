@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block styles %}
+<link rel="stylesheet" href="{% static 'css/investmentManagement.css' %}">
+{% endblock %}
+{% block content %}
+
+<div class="container-fluid px-4 py-8">
+    <div class="grid grid-cols-12 gap-6">
+        <!-- 버튼 섹션 -->
+        <div class="col-span-3">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="space-y-6">
+                    <a href="{% url 'user_info_management' %}" class="flex items-center justify-center bg-purple-500 text-white rounded-lg p-4 hover:bg-purple-600 transition-colors">
+                        사용자 정보 관리
+                    <a href="{% url 'prediction' %}" class="flex items-center justify-center bg-red-500 text-white rounded-lg p-4 hover:bg-green-600 transition-colors">
+                        가상화폐 예측
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 섹션 -->
+        <div class="col-span-9">
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">가상화폐 가격 예측</h2>
+            </div>
+    
+            <!-- 검색 영역 -->
+            <div class="grid grid-cols-1 gap-6 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">종목 선택</label>
+                    <select id="coinSelect" class="form-input w-full rounded-md">
+                        <option value="BTC">비트코인</option>
+                        <option value="ETH">이더리움</option>
+                        <option value="XRP">리플</option>
+                        <option value="DOGE">도지코인</option>
+                        <option value="ZRX">제로엑스</option>
+                        <option value="OTHER">그 외</option>
+                    </select>
+                    
+                    <div id="customSearch" class="mt-4 hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">직접 입력</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="customCoin" 
+                                   class="form-input flex-1 rounded-md"
+                                   placeholder="코인 심볼 입력 (예: CTC)">
+                            <button onclick="predictCustomCoin()" 
+                                    class="prediction-btn">
+                                검색
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- 가격 정보 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-sm font-medium text-gray-500 mb-1">현재 가격</div>
+                    <div id="currentPrice" class="text-2xl font-bold">로딩중...</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="text-sm font-medium text-gray-500 mb-1">예측 가격</div>
+                    <div id="predictedPrice" class="text-2xl font-bold">로딩중...</div>
+                </div>
+            </div>
+    
+            <!-- 통계 정보 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm font-medium text-gray-500 mb-1">최저 예상가</div>
+                    <div id="minPrice" class="text-lg font-bold">로딩중...</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm font-medium text-gray-500 mb-1">최고 예상가</div>
+                    <div id="maxPrice" class="text-lg font-bold">로딩중...</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm font-medium text-gray-500 mb-1">평균 예상가</div>
+                    <div id="avgPrice" class="text-lg font-bold">로딩중...</div>
+                </div>
+            </div>
+    
+            <!-- 예측 기간 설정 -->
+            <div class="grid grid-cols-1 gap-6 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">예측 기간</label>
+                    <div class="flex gap-4">
+                        <button class="period-btn prediction-btn" data-days="7">1주</button>
+                        <button class="period-btn prediction-btn" data-days="30">1개월</button>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="customPeriod" class="form-input w-20" min="1" max="365">
+                            <span>일</span>
+                            <button onclick="setCustomPeriod()" class="prediction-btn">적용</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- 차트 -->
+            <div class="bg-gray-50 rounded-lg shadow-md p-6">
+                <div id="predictionChart" style="width: 100%; height: 500px; position: relative;"></div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js" crossorigin="anonymous"></script>
+    <script>
+        // 라이브러리가 로드되었는지 확인
+        window.addEventListener('load', function() {
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('LightweightCharts 라이브러리 로드 실패');
+            } else {
+                console.log('LightweightCharts 라이브러리 로드 성공');
+            }
+        });
+    </script>
+<script src="{% static 'js/newPrediction.js' %}"></script>
+{% endblock %}

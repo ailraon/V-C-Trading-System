@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
@@ -9,7 +10,7 @@ from django.urls import reverse
 from django.contrib.sessions.models import Session
 from datetime import datetime
 import logging
-from .utils import get_krw_markets_with_prices_and_change, get_crypto_detail_info # 유틸리티 함수 가져오기
+from .utils import get_krw_markets_with_prices_and_change, get_crypto_detail_info, get_crypto_detail_chart_info # 유틸리티 함수 가져오기
 import pyupbit
 from .models import CryptoPrediction
 
@@ -46,15 +47,50 @@ class InfoValidator:
             # 비밀번호 유효성 검사
             if len(user_data['user_password']) < 8:
                 return False, "비밀번호는 8자 이상이어야 합니다."
+            
+            # 이름 유효성 검사 추가
+            if not re.match(r"^[가-힣]{2,5}$", user_data['user_name']):
+                return False, "이름은 2~5자의 한글만 입력 가능합니다."
 
-            # 전화번호 중복/형식 검사
-            phone_pattern = re.compile(r'^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$')
-            if not phone_pattern.match(user_data['phone_number']):
+            # 생년월일 유효성 검사
+            try:
+                birth_date = datetime.strptime(user_data['birth_date'], '%Y-%m-%d').date()
+                today = datetime.now().date()
+
+                if birth_date > today:
+                    return False, "미래 날짜는 입력할 수 없습니다."
+            except ValueError:
+                return False, "올바른 날짜 형식이 아닙니다."
+        
+            # 전화번호 형식 및 중복 검사
+            phone_number = user_data['phone_number'].replace('-', '')  # 하이픈 제거
+            if not phone_number.isdigit() or not len(phone_number) in [10, 11]:
                 return False, "올바른 전화번호 형식이 아닙니다."
-            if UserInfo.objects.filter(phone_number=user_data['phone_number']).exists():
+            
+            # 전화번호 포맷팅
+            if len(phone_number) == 11:
+                formatted_phone = f"{phone_number[:3]}-{phone_number[3:7]}-{phone_number[7:]}"
+            else:  # 10자리인 경우
+                formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
+            
+            # 포맷팅된 전화번호로 중복 검사
+            if UserInfo.objects.filter(phone_number=formatted_phone).exists():
                 return False, "이미 등록된 전화번호입니다."
+                
+            # 포맷팅된 전화번호를 저장용 데이터에 다시 할당
+            user_data['phone_number'] = formatted_phone
 
-            # 계좌번호 중복 검사 - BankAccount 테이블에서 검사
+
+            # 계좌번호 유효성 검사 추가
+            account_id = user_data['account_id']
+            if not account_id.isdigit():
+                return False, "계좌번호는 숫자만 입력 가능합니다."
+            
+            # 계좌번호 길이 검사 추가 (10~14자리)
+            if not (10 <= len(account_id) <= 14):
+                return False, "계좌번호는 10~14자리여야 합니다."
+            
+            # 계좌번호 중복 검사
             if BankAccount.objects.filter(account_id=user_data['account_id']).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
@@ -155,10 +191,22 @@ class User:
             if update_data.get('birth_date'):
                 user.birth_date = datetime.strptime(update_data['birth_date'], '%Y-%m-%d')
             if update_data.get('phone_number'):
-                # 전화번호 중복 체크
-                if UserInfo.objects.filter(phone_number=update_data['phone_number']).exclude(user_id=user_id).exists():
+                # 전화번호 형식 처리
+                phone_number = update_data['phone_number'].replace('-', '')
+                if not phone_number.isdigit() or not len(phone_number) in [10, 11]:
+                    return False, "올바른 전화번호 형식이 아닙니다."
+                
+                # 전화번호 포맷팅
+                if len(phone_number) == 11:
+                    formatted_phone = f"{phone_number[:3]}-{phone_number[3:7]}-{phone_number[7:]}"
+                else:  # 10자리인 경우
+                    formatted_phone = f"{phone_number[:3]}-{phone_number[3:6]}-{phone_number[6:]}"
+                
+                # 전화번호 중복 체크 (자신의 번호는 제외)
+                if UserInfo.objects.filter(phone_number=formatted_phone).exclude(user_id=user_id).exists():
                     return False, "이미 등록된 전화번호입니다."
-                user.phone_number = update_data['phone_number']
+                    
+                user.phone_number = formatted_phone
             
             user.save()
             return True, "사용자 정보가 성공적으로 수정되었습니다."
@@ -171,10 +219,8 @@ class User:
         """회원 탈퇴 처리"""
         try:
             with transaction.atomic():
-                user = UserInfo.objects.select_related(
-                    'account', 
-                    'virtual_account'
-                ).get(user_id=user_id)
+                # 사용자 정보 조회 (virtual_account만 select_related로 가져옴)
+                user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
 
                 # 비밀번호 확인
                 if not check_password(password, user.user_password):
@@ -183,12 +229,10 @@ class User:
                 # 관련된 거래 내역 삭제
                 InvestmentPortfolio.objects.filter(user=user).delete()
                 TransferHistory.objects.filter(user=user).delete()
+                OrderInfo.objects.filter(user=user).delete()
 
-                # 사용자의 모든 실계좌 조회 및 삭제
-                BankAccount.objects.filter(
-                    Q(account_id=user.account_id) |
-                    Q(user_id=user_id)
-                ).delete()
+                # 사용자의 모든 실계좌 삭제
+                BankAccount.objects.filter(user=user).delete()
 
                 # 가상계좌 삭제
                 if user.virtual_account:
@@ -243,19 +287,23 @@ class User:
             if not account_id.isdigit():
                 return False, "계좌번호는 숫자만 입력 가능합니다."
 
+            # 계좌번호 길이 검사 추가
+            if not (10 <= len(account_id) <= 14):
+                return False, "계좌번호는 10~14자리여야 합니다."
+
             if BankAccount.objects.filter(account_id=account_id).exists():
                 return False, "이미 등록된 계좌번호입니다."
 
-            # 첫 번째 계좌 추가인지 확인
+            # 첫 번째 계좌 추가인지 확인 
             existing_accounts = self.get_user_accounts(user_id)
-            
+
             BankAccount.objects.create(
                 account_id=account_id,
-                bank_name=bank_name,
+                bank_name=bank_name,  
                 balance=0.00,
                 user_id=user_id
             )
-            
+
             return True, "계좌가 성공적으로 추가되었습니다."
         except Exception as e:
             logger.error(f"Bank account addition error: {str(e)}")
@@ -355,7 +403,7 @@ class User:
             success, user_id = trading_system.process_login(result)
             if success:
                 request.session['user_id'] = user_id
-                return redirect('dashboard')
+                return redirect('crypto_list')
             
             context.update({
                 'error': user_id,
@@ -454,12 +502,12 @@ class User:
                 'virtual_account': virtual_account,
             }
 
-            return render(request, 'management/user_info.html', context)
+            return render(request, 'management/userManagement.html', context)
 
         except Exception as e:
             logger.error(f"User info management error: {str(e)}")
             messages.error(request, "사용자 정보 처리 중 오류가 발생했습니다.")
-            return redirect('dashboard')
+            return redirect('crypto_list')
     
     
 class InvestmentManager:
@@ -493,7 +541,7 @@ class InvestmentManager:
                 'total_valuation': total_valuation,
                 'total_profit': total_valuation - total_investment,
                 'total_profit_rate': ((total_valuation - total_investment) / total_investment * 100) 
-                                   if total_investment > 0 else 0
+                                if total_investment > 0 else 0
             }
 
             return portfolios, summary
@@ -552,12 +600,12 @@ class InvestmentManager:
                         'orders': current_page
                     })
 
-            return render(request, 'management/investment.html', context)
+            return render(request, 'management/investmentManagement.html', context)
 
         except Exception as e:
             logger.error(f"Investment management error: {str(e)}")
             messages.error(request, "투자내역 조회 중 오류가 발생했습니다.")
-            return redirect('dashboard')
+            return redirect('crypto_list')
 
 
 class AssetTransferManager:
@@ -568,30 +616,64 @@ class AssetTransferManager:
     def get_transfer_history(self, user):
         """입출금 내역 조회"""
         try:
+            # 가상계좌 입출금 내역 조회
             transfers = TransferHistory.objects.filter(
                 user=user
             ).select_related('account', 'virtual_account').order_by('-transfer_time')
 
+            # 가상화폐 거래 내역 조회
+            crypto_transfers = OrderInfo.objects.filter(
+                user=user
+            ).select_related('crypto').order_by('-executed_time')
+
+            all_transfers = []
+
+            # 가상계좌 거래 내역 처리
             for transfer in transfers:
-                # 입금인 경우
+                transfer_data = {
+                    'transfer_time': transfer.transfer_time,
+                    'transfer_type': transfer.transfer_type,
+                    'amount': transfer.amount,
+                    'transaction_type': 'VIRTUAL',
+                    'description': f"가상계좌 {'입금' if transfer.transfer_type == 'DEPOSIT' else '출금'}"
+                }
+
                 if transfer.transfer_type == 'DEPOSIT':
-                    transfer.from_account = f'{transfer.account.bank_name} {transfer.account.account_id}'
-                    transfer.to_account = transfer.virtual_account.virtual_account_id
-                # 출금인 경우
+                    transfer_data['from_account'] = f'{transfer.account.bank_name} {transfer.account.account_id}'
+                    transfer_data['to_account'] = transfer.virtual_account.virtual_account_id
                 else:
-                    transfer.from_account = transfer.virtual_account.virtual_account_id
-                    transfer.to_account = f'{transfer.account.bank_name} {transfer.account.account_id}'
+                    transfer_data['from_account'] = transfer.virtual_account.virtual_account_id
+                    transfer_data['to_account'] = f'{transfer.account.bank_name} {transfer.account.account_id}'
 
-                if hasattr(transfer, 'crypto_transaction'):
-                    transfer.transaction_type = 'CRYPTO'
-                else:
-                    transfer.transaction_type = 'VIRTUAL'
+                all_transfers.append(transfer_data)
 
-            return transfers
-        
+            # 가상화폐 거래 내역 처리
+            for order in crypto_transfers:
+                transfer_data = {
+                    'transfer_time': order.executed_time,
+                    'transfer_type': 'DEPOSIT' if order.order_type == 'SELL' else 'WITHDRAWAL',
+                    'amount': order.total_amount,
+                    'transaction_type': 'CRYPTO',
+                    'description': f"{order.crypto.crypto_name} {'매도' if order.order_type == 'SELL' else '매수'} ({order.order_quantity} {order.crypto.crypto_type})"
+                }
+
+                if order.order_type == 'SELL':  # 매도 (가상화폐 -> 가상계좌)
+                    transfer_data['from_account'] = f"{order.crypto.crypto_name} 매도"
+                    transfer_data['to_account'] = user.virtual_account.virtual_account_id
+                else:  # 매수 (가상계좌 -> 가상화폐)
+                    transfer_data['from_account'] = user.virtual_account.virtual_account_id
+                    transfer_data['to_account'] = f"{order.crypto.crypto_name} 매수"
+
+                all_transfers.append(transfer_data)
+
+            # 시간순 정렬
+            all_transfers.sort(key=lambda x: x['transfer_time'], reverse=True)
+
+            return all_transfers
+
         except Exception as e:
             logger.error(f"Transfer history error: {str(e)}")
-            return None
+            return []
 
     def process_deposit(self, user, from_account_id, amount):
         """입금 처리"""
@@ -662,7 +744,7 @@ class AssetTransferManager:
                     'transfer_time': transfer.transfer_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'bank_name': transfer.bank_name,
                     'from_account': from_account.account_id if hasattr(from_account, 'account_id') 
-                                  else from_account.virtual_account_id,
+                                else from_account.virtual_account_id,
                     'to_account': to_account.virtual_account_id if hasattr(to_account, 'virtual_account_id') 
                                 else to_account.account_id,
                 }
@@ -672,36 +754,55 @@ class AssetTransferManager:
     
     # ==========AssetTransferManager Class 뷰 처리 메서드=========
     def handle_transfer_management(self, request, trading_system):
-        """자산입출금 관리 뷰 처리"""
         try:
             user_id = request.session.get('user_id')
             user = trading_system.get_user_info(user_id)
             if not user:
                 return redirect('login')
-            
-            page = request.GET.get('page', 1)
-            
-            virtual_account = trading_system.get_virtual_account(user.virtual_account_id)
-            real_accounts = User().get_user_accounts(user_id)  # 실계좌 목록 조회
-            transfers = self.get_transfer_history(user)
 
-            if not virtual_account or not real_accounts:
-                logger.error("Account information not found")
-                return redirect('dashboard')
-            
-            paginator = Paginator(transfers, 10)
-            current_page = paginator.get_page(page)
-            
+            # URL에서 필터 타입과 페이지 번호 가져오기
+            current_filter = request.GET.get('filter', 'all')
+            page = request.GET.get('page', 1)
+
+            virtual_account = trading_system.get_virtual_account(user.virtual_account_id)
+            real_accounts = User().get_user_accounts(user_id)
+            all_transfers = self.get_transfer_history(user)
+
+            # 먼저 필터링 적용
+            if current_filter == 'VIRTUAL':
+                filtered_transfers = [t for t in all_transfers if t['transaction_type'] == 'VIRTUAL']
+            elif current_filter == 'CRYPTO':
+                filtered_transfers = [t for t in all_transfers if t['transaction_type'] == 'CRYPTO']
+            else:
+                filtered_transfers = all_transfers
+
+            # 필터링된 데이터로 페이지네이션
+            paginator = Paginator(filtered_transfers, 10)  # 페이지당 10개 항목
+
+            try:
+                current_page = paginator.page(page)
+            except:
+                current_page = paginator.page(1)
+
             context = {
                 'user': user,
                 'virtual_account': virtual_account,
-                'real_accounts': real_accounts,  # 실계좌 목록 추가
+                'real_accounts': real_accounts,
                 'transfers': current_page,
+                'current_filter': current_filter,  # 현재 필터 상태 전달
+                'show_pagination': len(filtered_transfers) > 10,
+                'total_pages': paginator.num_pages,
+                'current_page': current_page.number,
+                'has_next': current_page.has_next(),
+                'has_previous': current_page.has_previous(),
+                'page_range': paginator.page_range,
             }
-            return render(request, 'management/transfer.html', context)
+
+            return render(request, 'management/transferManagement.html', context)
+
         except Exception as e:
             logger.error(f"Transfer management error: {str(e)}")
-            return redirect('dashboard')
+            return redirect('crypto_list')
 
     def handle_process_transfer(self, request, trading_system):
         """입출금 처리 뷰"""
@@ -876,17 +977,26 @@ class VCTradingSystem:
                         'success': False,
                         'message': '사용자 정보를 찾을 수 없습니다.'
                     })
-                
+
                 account_id = request.POST.get('account_id')
                 amount = Decimal(request.POST.get('amount', '0'))
-                
+
                 if amount <= 0:
                     messages.error(request, '유효하지 않은 금액입니다.')
                     return JsonResponse({
                         'success': False,
                         'message': '유효하지 않은 금액입니다.'
                     })
-                
+
+                # 입금 한도 체크 추가
+                virtual_account = self.get_virtual_account(user.virtual_account_id)
+                if amount > virtual_account.transfer_limit:
+                    messages.error(request, f'입금 한도를 초과했습니다. (한도: {virtual_account.transfer_limit:,}원)')
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'입금 한도를 초과했습니다. (한도: {virtual_account.transfer_limit:,}원)'
+                    })
+
                 try:
                     with transaction.atomic():
                         # 선택한 실계좌에 입금
@@ -896,7 +1006,7 @@ class VCTradingSystem:
                         )
                         real_account.balance += amount
                         real_account.save()
-                    
+
                     messages.success(request, f'{amount:,.0f}원이 입금되었습니다.')
                     return JsonResponse({
                         'success': True,
@@ -911,7 +1021,7 @@ class VCTradingSystem:
                         'success': False,
                         'message': '해당 계좌를 찾을 수 없습니다.'
                     })
-                    
+
             except Exception as e:
                 logger.error(f"Test deposit error: {str(e)}")
                 messages.error(request, '처리 중 오류가 발생했습니다.')
@@ -919,27 +1029,13 @@ class VCTradingSystem:
                     'success': False,
                     'message': f'처리 중 오류가 발생했습니다: {str(e)}'
                 })
-        
+
         messages.error(request, '잘못된 요청입니다.')
         return JsonResponse({
             'success': False,
             'message': '잘못된 요청입니다.'
         })
     
-    # ==========VCTradingSystem Class 뷰 처리 메서드=========
-    def handle_dashboard(self, request):
-        """대시보드 뷰 처리"""
-        try:
-            user_id = request.session.get('user_id')
-            user = self.get_user_info(user_id)
-            if not user:
-                return redirect('login')
-            
-            return render(request, 'dashboard/dashboard.html', {'user': user})
-        except Exception as e:
-            logger.error(f"Dashboard error: {str(e)}")
-            return redirect('login')
-
 
 # 뷰 함수들은 이제 단순히 클래스의 메서드를 호출하는 래퍼가 됩니다:
 def signup_view(request):
@@ -959,10 +1055,6 @@ def user_info_management_view(request):
     trading_system = VCTradingSystem()
     return user.handle_user_info_management(request, trading_system)
 
-def dashboard_view(request):
-    trading_system = VCTradingSystem()
-    return trading_system.handle_dashboard(request)
-
 def investment_management_view(request):
     trading_system = VCTradingSystem()
     return trading_system.investment_manager.handle_investment_management(request, trading_system)
@@ -979,66 +1071,184 @@ def deposit_to_real_account(request):
     trading_system = VCTradingSystem()
     return trading_system.handle_test_deposit(request)
 
-class cryptocurrency:
-    """가상화폐 클래스"""
+class Cryptocurrency:
+    """가상화폐 관련 기능을 처리하는 클래스"""
+
     def __init__(self):
         pass
 
     def get_crypto_list_info(self):
         """가상화폐 전체 조회"""
         try:
-            return True
-        except:
-            return False
-    
-    def get_crypto_detail_info(self, crypto_id):
+            market_data = get_krw_markets_with_prices_and_change()
+            return json.loads(market_data)
+        except Exception as e:
+            raise Exception(f"Failed to fetch market data: {e}")
+
+    def get_crypto_detail_info(self, crypto_id, market_data):
         """가상화폐 상세정보 조회"""
         try:
-            
-            return True
-        except:
-            return False
-    
-    def sell_crypto():
-        """가상화폐 매도"""
-        try:
-            return True
-        except:
-            return False
-    
-    def buy_crypto():
+            return next((data for data in market_data if data["market"] == crypto_id), None)
+        except Exception as e:
+            raise Exception(f"Failed to fetch crypto detail: {e}")
+
+    def buy_crypto(self, request):
         """가상화폐 매수"""
-        try:
-            return True
-        except:
-            return False
+        if request.method == "POST":
+            try:
+                data = json.loads(request.body)
+                user_id = request.session.get("user_id")
+                crypto_id = data.get("crypto_id")
+                quantity = Decimal(data.get("quantity"))
+                market_price = Decimal(data.get("market_price"))
+                total_price = Decimal(data.get("total_price"))
+
+                if not user_id:
+                    return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+                if not crypto_id or not quantity or not market_price or not total_price:
+                    return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
+
+                # 사용자 및 가상화폐 검증
+                user = UserInfo.objects.filter(user_id=user_id).first()
+                if not user:
+                    return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
+
+                crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+                if not crypto:
+                    return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
+
+                # 잔액 확인
+                if user.virtual_account.balance < total_price:
+                    return JsonResponse({"success": False, "message": "보유금액이 부족합니다."}, status=400)
+
+                # 주문 처리
+                order = OrderInfo.objects.create(
+                    user=user,
+                    crypto=crypto,
+                    order_type="BUY",
+                    order_price=market_price,
+                    order_quantity=quantity,
+                    total_amount=total_price,
+                )
+
+                # 포트폴리오 업데이트
+                portfolio, created = InvestmentPortfolio.objects.get_or_create(
+                    user=user,
+                    crypto=crypto,
+                    defaults={
+                        "portfolio_id": f"{crypto.crypto_type}{user.user_id}",
+                        "total_quantity": quantity,
+                        "avg_buy_price": market_price,
+                        "total_investment": total_price,
+                        "first_buy_date": order.executed_time,
+                    },
+                )
+                if not created:
+                    total_quantity = portfolio.total_quantity + quantity
+                    total_investment = portfolio.total_investment + total_price
+                    portfolio.total_quantity = total_quantity
+                    portfolio.avg_buy_price = total_investment / total_quantity
+                    portfolio.total_investment = total_investment
+                    portfolio.save()
+
+                # 잔액 차감
+                user.virtual_account.balance -= total_price
+                user.virtual_account.save()
+
+                return JsonResponse({"success": True, "message": "가상화폐 매수 주문 완료."})
+            except Exception as e:
+                return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
+
+    def sell_crypto(self, request):
+        """가상화폐 매도"""
+        if request.method == "POST":
+            try:
+                data = json.loads(request.body)
+                user_id = request.session.get("user_id")
+                crypto_id = data.get("crypto_id")
+                quantity = Decimal(data.get("quantity"))
+                market_price = Decimal(data.get("market_price"))
+                total_price = Decimal(data.get("total_price"))
+
+                if not user_id:
+                    return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+                if not crypto_id or not quantity or not market_price or not total_price:
+                    return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
+
+                # 사용자 및 포트폴리오 검증
+                user = UserInfo.objects.filter(user_id=user_id).first()
+                if not user:
+                    return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
+
+                crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+                if not crypto:
+                    return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
+
+                portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
+                if not portfolio or portfolio.total_quantity < quantity:
+                    return JsonResponse({"success": False, "message": "보유한 가상화폐가 부족합니다."}, status=400)
+
+                # 주문 처리
+                order = OrderInfo.objects.create(
+                    user=user,
+                    crypto=crypto,
+                    order_type="SELL",
+                    order_price=market_price,
+                    order_quantity=quantity,
+                    total_amount=total_price,
+                )
+
+                # 포트폴리오 업데이트
+                portfolio.total_quantity -= quantity
+                if portfolio.total_quantity == 0:
+                    portfolio.delete()
+                else:
+                    portfolio.total_investment -= quantity * market_price
+                    portfolio.save()
+
+                # 잔액 추가
+                user.virtual_account.balance += total_price
+                user.virtual_account.save()
+
+                return JsonResponse({"success": True, "message": "가상화폐 매도 완료."})
+            except Exception as e:
+                return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
+
 
 def cryptolist_view(request):
     """
     가상화폐 목록 및 가격 조회
     """
-    crypto = cryptocurrency()
 
     try:
-        market_data = get_krw_markets_with_prices_and_change()
+        try:
+            market_data = get_krw_markets_with_prices_and_change()
+        except Exception as e:
+            return render(request, "cryptocurrency/cryptolist.html", {"error": f"Failed to fetch market data: {e}"})
 
         crypto_code = request.GET.get('code', 'KRW-BTC')
         transfer_type = request.GET.get('type', 'buy')
+        candle_type = request.GET.get('time', 'm1')
         
         context = {
-            "market_data": market_data,
             "crypto_code" : crypto_code,
-            "transfer_type" : transfer_type
+            "transfer_type" : transfer_type,
+            "candle_type" : candle_type,
+            "market_data": json.dumps(market_data, ensure_ascii=False)
         }
 
         if crypto_code:
             crypto_detail = get_crypto_detail_info(crypto_code, market_data)
             context.update({
-                "market_data": market_data,
-                "crypto_code" : crypto_code,
-                "transfer_type" : transfer_type,
                 "crypto_detail" : crypto_detail
             })
+            if candle_type:
+                candle_data = get_crypto_detail_chart_info(crypto_code, candle_type)
+                context.update({
+                    "candle_data" : json.dumps(candle_data, ensure_ascii=False)
+                })
 
         return render(request, "cryptocurrency/cryptolist.html", context)
 
@@ -1049,117 +1259,145 @@ def buy_crypto(request):
     """
     가상화폐 매수
     """
-    try:
-        # POST 요청 데이터
-        user_id = request.POST.get("user_id")
-        crypto_id = request.POST.get("crypto_id")
-        quantity = Decimal(request.POST.get("quantity")) 
-        market_price = Decimal(request.POST.get("market_price"))  # 시장가
+    if request.method == 'POST':
+        try:
+            # JSON 데이터 파싱
+            data = json.loads(request.body)
+            user_id = request.session.get('user_id')  # 세션에서 사용자 ID 가져오기
+            crypto_id = data.get("crypto_id")
+            quantity = data.get("quantity")
+            market_price = data.get("market_price")
+            total_price = data.get("total_price")
 
-        # 필요한 모델 객체 가져오기
-        user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
-        crypto = CryptoInfo.objects.get(crypto_id=crypto_id)
+            if not user_id:
+                return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+            if not crypto_id or not quantity or not market_price or not total_price:
+                return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
 
-        # 총 거래금액 계산
-        total_amount = market_price * quantity
+            # 모델 객체 가져오기
+            user = UserInfo.objects.filter(user_id=user_id).first()
+            if not user:
+                return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
 
-        # 가용 잔액 확인
-        if user.virtual_account.balance < total_amount:
-            return JsonResponse({"success": False, "message": "Insufficient balance for this purchase."}, status=400)
+            crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+            if not crypto:
+                return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
 
-        # 주문 내역(OrderInfo) 추가
-        order = OrderInfo.objects.create(
-            user=user,
-            crypto=crypto,
-            order_type="BUY",
-            order_price=market_price,
-            order_quantity=quantity,
-            total_amount=total_amount,
-            market_price=market_price
-        )
+            # Decimal 변환
+            quantity = Decimal(quantity)
+            market_price = Decimal(market_price)
+            total_price = Decimal(total_price)
 
-        # 투자 포트폴리오 업데이트
-        portfolio, created = InvestmentPortfolio.objects.get_or_create(
-            user=user,
-            crypto=crypto,
-            defaults={
-                "total_quantity": quantity,
-                "avg_buy_price": market_price,
-                "total_investment": total_amount,
-                "first_buy_date": order.executed_time
-            },
-        )
+            # 잔액 확인
+            if user.virtual_account.balance < total_price:
+                return JsonResponse({"success": False, "message": "보유금액이 부족합니다."}, status=400)
 
-        if not created:
-            # 기존 투자 내역 업데이트
-            total_quantity = portfolio.total_quantity + quantity
-            total_investment = portfolio.total_investment + total_amount
-            avg_buy_price = total_investment / total_quantity
+            # 주문 내역 추가
+            order = OrderInfo.objects.create(
+                user=user,
+                crypto=crypto,
+                order_type="BUY",
+                order_price=market_price,
+                order_quantity=quantity,
+                total_amount=total_price,
+                market_price=market_price
+            )
 
-            portfolio.total_quantity = total_quantity
-            portfolio.avg_buy_price = avg_buy_price
-            portfolio.total_investment = total_investment
-            portfolio.save()
+            # 투자 포트폴리오 업데이트
+            portfolio, created = InvestmentPortfolio.objects.get_or_create(
+                user=user,
+                crypto=crypto,
+                defaults={
+                    "portfolio_id" : (crypto.crypto_type+user.user_id),
+                    "total_quantity": quantity,
+                    "avg_buy_price": market_price,
+                    "total_investment": total_price,
+                    "first_buy_date": order.executed_time
+                }
+            )
+            if not created:
+                total_quantity = portfolio.total_quantity + quantity
+                total_investment = portfolio.total_investment + total_price
+                avg_buy_price = total_investment / total_quantity
+                portfolio.total_quantity = total_quantity
+                portfolio.avg_buy_price = avg_buy_price
+                portfolio.total_investment = total_investment
+                portfolio.save()
 
-        # 사용자 가상계좌 잔액 차감
-        user.virtual_account.balance -= total_amount
-        user.virtual_account.save()
+            # 잔액 차감
+            user.virtual_account.balance -= total_price
+            user.virtual_account.save()
 
-        return JsonResponse({"success": True, "message": "Purchase completed successfully."})
+            return JsonResponse({"success": True, "message": "가상화폐 매수 주문 완료."})
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=500)
+    return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
 
-    except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
-    
 def sell_crypto(request):
     """
     가상화폐 매도
     """
-    try:
-        # POST 요청 데이터
-        user_id = request.POST.get("user_id")
-        crypto_id = request.POST.get("crypto_id")
-        quantity = Decimal(request.POST.get("quantity"))
-        market_price = Decimal(request.POST.get("market_price"))  # 시장가
+    if request.method == 'POST':
+        try:
+            # JSON 데이터 파싱
+            data = json.loads(request.body)
+            user_id = request.session.get('user_id')  # 세션에서 사용자 ID 가져오기
+            crypto_id = data.get("crypto_id")
+            quantity = data.get("quantity")
+            market_price = data.get("market_price")
+            total_price = data.get("total_price")
 
-        # 필요한 모델 객체 가져오기
-        user = UserInfo.objects.select_related('virtual_account').get(user_id=user_id)
-        crypto = CryptoInfo.objects.get(crypto_id=crypto_id)
+            if not user_id:
+                return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+            if not crypto_id or not quantity or not market_price or not total_price:
+                return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
 
-        # 투자 내역 확인
-        portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
-        if not portfolio or portfolio.total_quantity < quantity:
-            return JsonResponse({"success": False, "message": "Insufficient crypto quantity for this sale."}, status=400)
+            # 모델 객체 가져오기
+            user = UserInfo.objects.filter(user_id=user_id).first()
+            if not user:
+                return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
 
-        # 총 거래금액 계산
-        total_amount = market_price * quantity
+            crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+            if not crypto:
+                return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
 
-        # 주문 내역(OrderInfo) 추가
-        OrderInfo.objects.create(
-            user=user,
-            crypto=crypto,
-            order_type="SELL",
-            order_price=market_price,
-            order_quantity=quantity,
-            total_amount=total_amount,
-            market_price=market_price
-        )
+            # Decimal 변환
+            quantity = Decimal(quantity)
+            market_price = Decimal(market_price)
+            total_price = Decimal(total_price)
 
-        # 투자 내역 업데이트
-        portfolio.total_quantity -= quantity
-        if portfolio.total_quantity == 0:
-            portfolio.delete()  # 보유량 0인 경우 삭제
-        else:
-            portfolio.total_investment -= market_price * quantity
-            portfolio.save()
+            # 투자 포트폴리오 확인
+            portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
+            if not portfolio or portfolio.total_quantity < quantity:
+                return JsonResponse({"success": False, "message": "보유한 가상화폐가 부족합니다."}, status=400)
 
-        # 사용자 가상계좌 잔액 증가
-        user.virtual_account.balance += total_amount
-        user.virtual_account.save()
+            # 주문 내역 추가
+            order = OrderInfo.objects.create(
+                user=user,
+                crypto=crypto,
+                order_type="SELL",
+                order_price=market_price,
+                order_quantity=quantity,
+                total_amount=total_price,
+                market_price=market_price
+            )
 
-        return JsonResponse({"success": True, "message": "Sale completed successfully."})
+            # 투자 포트폴리오 업데이트
+            portfolio.total_quantity -= quantity
+            if portfolio.total_quantity == 0:
+                portfolio.delete()  # 보유 수량이 0인 경우 포트폴리오 삭제
+            else:
+                portfolio.total_investment -= quantity * market_price
+                portfolio.save()
 
-    except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+            # 잔액 추가
+            user.virtual_account.balance += total_price
+            user.virtual_account.save()
+
+            return JsonResponse({"success": True, "message": "Sale completed successfully."})
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=500)
+    return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
 
 # 가상화폐 예측
 
@@ -1175,14 +1413,14 @@ def prediction_view(request):
             return redirect('login')
 
         # 예측 페이지 렌더링
-        return render(request, 'cryptocurrency/prediction.html', {
+        return render(request, 'cryptocurrency/predictionManagement.html', {
             'user_id': user_id
         })
 
     except Exception as e:
         logger.error(f"Prediction view error: {str(e)}")
         messages.error(request, '예측 페이지를 불러오는 중 오류가 발생했습니다.')
-        return redirect('dashboard')
+        return redirect('crypto_list')
 
 def get_prediction_data(request, coin_id):
     """

@@ -10,14 +10,18 @@
     <title>V&C Trading System</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    {% block styles %}{% endblock %}
 </head>
 <body class="bg-gray-50">
     {% if request.session.user_id %}
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex justify-between items-center h-16"> 
-            <a href="{% url 'dashboard' %}" class="text-xl font-bold">V&C Trading System</a>
-            <div>
+            <a href="{% url 'crypto_list' %}" class="text-xl font-bold">V&C Trading System</a>
+            <div class="headers_link">
                 <a href="{% url 'crypto_list' %}">거래소</a>
+                <a href="{% url 'investment_management' %}">투자내역 관리</a>
+                <a href="{% url 'user_info_management' %}">서비스</a>
             </div>
             <div class="flex items-center">
                 <span class="mr-4">{{ request.session.user_id }}</span>
