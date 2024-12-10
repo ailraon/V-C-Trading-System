@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-&ccqz6d@!hogh76b7=_=x)s9z(n8(&so_=bq3ee^*@d=rj8fvi
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['vnc-trading-system.com', 'goog-sc-vnc-trading-system-448@lunar-shift-442412-a4.iam.gserviceaccount.com']
 
 
 # Application definition

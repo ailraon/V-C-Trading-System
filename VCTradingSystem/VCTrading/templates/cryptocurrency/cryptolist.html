@@ -41,6 +41,7 @@
                     {% endfor %} -->
                 </tbody>
             </table>
+            <div id="cryptolist"></div>
         </div>
     </div>
 
@@ -128,81 +129,184 @@
 
 {% block scripts %}
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<!-- <script src="{% static 'js/cryptoSearch.js' %}"></script> -->
+<!-- <script src="{% static 'js/cryptoDetail.js' %}"></script> -->
 <script>
-    
+    // 가상화폐 검색 기능
+const marketData = JSON.parse('{{ market_data|safe|escapejs }}');
+// 초성 추출 함수
+const getHangulInitials = (text) => {
+  const INITIALS = [
+    'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+  ];
+  const HANGUL_START = 44032; // "가"의 유니코드
+  const HANGUL_END = 55203; // "힣"의 유니코드
+
+  return text
+    .split('')
+    .map((char) => {
+      const charCode = char.charCodeAt(0);
+      if (charCode >= HANGUL_START && charCode <= HANGUL_END) {
+        const index = Math.floor((charCode - HANGUL_START) / 588); // 초성 인덱스 계산
+        return INITIALS[index];
+      }
+      return char; // 한글이 아니면 그대로 반환
+    })
+    .join('');
+};
+
+// 필터링 함수
+const filterMarketData = (searchQuery) => {
+  const normalizedQuery = getHangulInitials(searchQuery).toLowerCase();
+
+  return marketData.filter((item) => {
+    const koreanInitials = getHangulInitials(item.korean_name).toLowerCase();
+    const englishName = item.english_name.toLowerCase();
+    const koreanName = item.korean_name.toLowerCase();
+
+    return (
+      koreanName.includes(normalizedQuery) ||
+      koreanInitials.includes(normalizedQuery) ||
+      englishName.includes(normalizedQuery)
+    );
+  });   
+};
+
+// 테이블 업데이트 함수
+const updateTable = (filteredData) => {
+  const tableBody = document.getElementById('cryptoTableBody');
+  tableBody.innerHTML = ''; // 기존 데이터 삭제
+  const cryptolist = document.getElementById('cryptolist');
+  cryptolist.innerHTML = '';
+
+  console.log(filteredData);
+
+    if (!filteredData.length) {
+        const errormessage = document.createElement('div');
+        errormessage.innerHTML = "검색 결과가 없습니다.";
+        errormessage.style.width = '100%';
+
+        cryptolist.appendChild(errormessage);
+        console.log("추가 완료");
+    }
+
+  filteredData.forEach((data) => {
+    const row = document.createElement('tr');
+    row.className = 'border-b hover:bg-gray-100';
+    row.style.cursor = 'pointer';
+
+    // onclick 이벤트 추가
+    row.setAttribute('onclick', `goToDetail('${data.market}', 'buy')`);
+
+    // 내부 HTML 설정
+    row.innerHTML = `
+        <td class="px-4 py-2">
+            <span class="font-medium text-gray-900">${data.korean_name}</span>
+            <br />
+            <span class="text-sm text-gray-500">${data.english_name}</span>
+        </td>
+        <td class="px-4 py-2 font-semibold text-gray-700">${data.current_price.toLocaleString()} KRW</td>
+        <td class="px-4 py-2 ${data.change_rate > 0 ? 'text-green-500' : 'text-red-500'} font-semibold">
+            ${data.change_rate.toFixed(1)}%
+        </td>
+    `;
+
+    // 행 추가
+    tableBody.appendChild(row);
+  });
+};
+
+// 디바운스 함수
+const debounce = (func, delay) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+};
+
+// 검색 입력 핸들러
+const handleSearch = debounce((event) => {
+  const searchQuery = event.target.value;
+  const filteredData = filterMarketData(searchQuery);
+  updateTable(filteredData);
+}, 300); // 300ms 딜레이
+
+// 초기 데이터 렌더링
+updateTable(marketData);
+
+// 검색 이벤트 연결
+document.getElementById('searchInput').addEventListener('input', handleSearch);
     // 가상화폐 목록 데이터
-    // console.log("Raw JSON data:", '{{ market_data|safe|escapejs }}');
-    const marketData = JSON.parse('{{ market_data|safe|escapejs }}');
-    // console.log('Market Data:', marketData);
     // 차트 코드
-    const rawData = JSON.parse('{{ candle_data|safe|escapejs }}');
-    // console.log('rawData Data:', rawData);
+const rawData = JSON.parse('{{ candle_data|safe|escapejs }}');
+// console.log('rawData Data:', rawData);
 
-    // 데이터를 캔들 차트 형식으로 변환
-    const data = rawData.map(d => ({
-        date: new Date(d.candle_date_time_kst), // KST 기준 날짜를 Date 객체로 변환
-        open: d.opening_price,
-        high: d.high_price,
-        low: d.low_price,
-        close: d.trade_price,
-    }));
+// 데이터를 캔들 차트 형식으로 변환
+const data = rawData.map(d => ({
+  date: new Date(d.candle_date_time_kst), // KST 기준 날짜를 Date 객체로 변환
+  open: d.opening_price,
+  high: d.high_price,
+  low: d.low_price,
+  close: d.trade_price,
+}));
 
-    // 캔들 차트의 크기와 여백 설정
-    const margin = { top: 20, right: 30, bottom: 30, left: 50 };
-    const width = 800 - margin.left - margin.right;
-    const height = 300 - margin.top - margin.bottom;
+// 캔들 차트의 크기와 여백 설정
+const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+const width = 800 - margin.left - margin.right;
+const height = 300 - margin.top - margin.bottom;
 
-    // X축과 Y축 범위 설정
-    const x = d3.scaleBand()
-        .domain(data.map(d => d.date))
-        .range([0, width])
-        .padding(0.2);
+// X축과 Y축 범위 설정
+const x = d3.scaleBand()
+  .domain(data.map(d => d.date))
+  .range([0, width])
+  .padding(0.2);
 
-    const y = d3.scaleLinear()
-        .domain([d3.min(data, d => d.low), d3.max(data, d => d.high)])
-        .nice()
-        .range([height, 0]);
+const y = d3.scaleLinear()
+  .domain([d3.min(data, d => d.low), d3.max(data, d => d.high)])
+  .nice()
+  .range([height, 0]);
 
-    // SVG 생성
-    const svg = d3.select("#cryptoChart")
-        .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
+// SVG 생성
+const svg = d3.select("#cryptoChart")
+  .append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // X축 추가
-    // svg.append("g")
-    //     .attr("transform", `translate(0,${height})`)
-    //     .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%H:%M:%S")));
+// X축 추가
+// svg.append("g")
+//     .attr("transform", `translate(0,${height})`)
+//     .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%H:%M:%S")));
 
-    // Y축 추가
-    svg.append("g")
-        .call(d3.axisLeft(y));
+// Y축 추가
+svg.append("g")
+  .call(d3.axisLeft(y));
 
-    // 캔들 막대의 스템 추가 (고가~저가)
-    svg.selectAll("line.stem")
-        .data(data)
-        .enter()
-        .append("line")
-        .attr("class", "stem")
-        .attr("x1", d => x(d.date) + x.bandwidth() / 2)
-        .attr("x2", d => x(d.date) + x.bandwidth() / 2)
-        .attr("y1", d => y(d.high))
-        .attr("y2", d => y(d.low))
-        .attr("stroke", "black");
+// 캔들 막대의 스템 추가 (고가~저가)
+svg.selectAll("line.stem")
+  .data(data)
+  .enter()
+  .append("line")
+  .attr("class", "stem")
+  .attr("x1", d => x(d.date) + x.bandwidth() / 2)
+  .attr("x2", d => x(d.date) + x.bandwidth() / 2)
+  .attr("y1", d => y(d.high))
+  .attr("y2", d => y(d.low))
+  .attr("stroke", "black");
 
-    // 캔들 막대 (시가~종가)
-    svg.selectAll("rect.candle")
-        .data(data)
-        .enter()
-        .append("rect")
-        .attr("class", "candle")
-        .attr("x", d => x(d.date))
-        .attr("y", d => y(Math.max(d.open, d.close)))
-        .attr("width", x.bandwidth())
-        .attr("height", d => Math.abs(y(d.open) - y(d.close)))
-        .attr("fill", d => d.open > d.close ? "red" : "green"); // 시가 > 종가: 빨간색, 시가 < 종가: 초록색
+// 캔들 막대 (시가~종가)
+svg.selectAll("rect.candle")
+    .data(data)
+    .enter()
+    .append("rect")
+    .attr("class", "candle")
+    .attr("x", d => x(d.date))
+    .attr("y", d => y(Math.max(d.open, d.close)))
+    .attr("width", x.bandwidth())
+    .attr("height", d => Math.abs(y(d.open) - y(d.close)))
+    .attr("fill", d => d.open > d.close ? "red" : "green"); // 시가 > 종가: 빨간색, 시가 < 종가: 초록색
 
     // 가상화폐 목록 기능
 
@@ -220,7 +324,7 @@
         window.location.href = url.toString();
     }
 
-     /**
+    /**
      * 숫자 입력 핸들러: 소숫점 및 숫자만 허용
      * @param {HTMLElement} inputElement - 입력 필드
      * @param {string} tradePrice - 거래 가격
@@ -270,6 +374,10 @@
         const quantity = total / parseFloat(tradePrice);
         document.getElementById(quantityInputId).value = quantity.toFixed(8); // 수량 표시
     }
+
+    /** 
+     * 그래프 
+    */
 
     // 토스트 메시지 표시 함수
     function showToast(message, type = 'info') {
@@ -351,98 +459,5 @@
             showToast('An error occurred while processing your request.', 'error');
         }
     }
-
-    // 가상화폐 검색 기능
-    
-    // 초성 추출 함수
-    const getHangulInitials = (text) => {
-        const INITIALS = [
-            'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
-        ];
-        const HANGUL_START = 44032; // "가"의 유니코드
-        const HANGUL_END = 55203; // "힣"의 유니코드
-
-        return text
-            .split('')
-            .map((char) => {
-                const charCode = char.charCodeAt(0);
-                if (charCode >= HANGUL_START && charCode <= HANGUL_END) {
-                    const index = Math.floor((charCode - HANGUL_START) / 588); // 초성 인덱스 계산
-                    return INITIALS[index];
-                }
-                return char; // 한글이 아니면 그대로 반환
-            })
-            .join('');
-    };
-
-    // 필터링 함수
-    const filterMarketData = (searchQuery) => {
-        const normalizedQuery = getHangulInitials(searchQuery).toLowerCase();
-
-        return marketData.filter((item) => {
-            const koreanInitials = getHangulInitials(item.korean_name).toLowerCase();
-            const englishName = item.english_name.toLowerCase();
-            const koreanName = item.korean_name.toLowerCase();
-
-            return (
-                koreanName.includes(normalizedQuery) ||
-                koreanInitials.includes(normalizedQuery) ||
-                englishName.includes(normalizedQuery)
-            );
-        });
-    };
-
-    // 테이블 업데이트 함수
-    const updateTable = (filteredData) => {
-        const tableBody = document.getElementById('cryptoTableBody');
-        tableBody.innerHTML = ''; // 기존 데이터 삭제
-
-        filteredData.forEach((data) => {
-            const row = document.createElement('tr');
-            row.className = 'border-b hover:bg-gray-100';
-            row.style.cursor = 'pointer';
-
-            // onclick 이벤트 추가
-            row.setAttribute('onclick', `goToDetail('${data.market}', 'buy')`);
-
-            // 내부 HTML 설정
-            row.innerHTML = `
-                <td class="px-4 py-2">
-                    <span class="font-medium text-gray-900">${data.korean_name}</span>
-                    <br />
-                    <span class="text-sm text-gray-500">${data.english_name}</span>
-                </td>
-                <td class="px-4 py-2 font-semibold text-gray-700">${data.current_price.toLocaleString()} KRW</td>
-                <td class="px-4 py-2 ${data.change_rate > 0 ? 'text-green-500' : 'text-red-500'} font-semibold">
-                    ${data.change_rate.toFixed(1)}%
-                </td>
-            `;
-
-            // 행 추가
-            tableBody.appendChild(row);
-        });
-    };
-
-    // 디바운스 함수
-    const debounce = (func, delay) => {
-        let timeout;
-        return (...args) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func(...args), delay);
-        };
-    };
-
-    // 검색 입력 핸들러
-    const handleSearch = debounce((event) => {
-        const searchQuery = event.target.value;
-        const filteredData = filterMarketData(searchQuery);
-        updateTable(filteredData);
-    }, 300); // 300ms 딜레이
-
-    // 초기 데이터 렌더링
-    updateTable(marketData);
-
-    // 검색 이벤트 연결
-    document.getElementById('searchInput').addEventListener('input', handleSearch);
 </script>
 {% endblock %}

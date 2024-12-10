@@ -1037,45 +1037,156 @@ def deposit_to_real_account(request):
     trading_system = VCTradingSystem()
     return trading_system.handle_test_deposit(request)
 
-class cryptocurrency:
-    """가상화폐 클래스"""
+class Cryptocurrency:
+    """가상화폐 관련 기능을 처리하는 클래스"""
+
     def __init__(self):
         pass
 
     def get_crypto_list_info(self):
         """가상화폐 전체 조회"""
         try:
-            return True
-        except:
-            return False
-    
-    def get_crypto_detail_info(self, crypto_id):
+            market_data = get_krw_markets_with_prices_and_change()
+            return json.loads(market_data)
+        except Exception as e:
+            raise Exception(f"Failed to fetch market data: {e}")
+
+    def get_crypto_detail_info(self, crypto_id, market_data):
         """가상화폐 상세정보 조회"""
         try:
-            
-            return True
-        except:
-            return False
-    
-    def sell_crypto():
-        """가상화폐 매도"""
-        try:
-            return True
-        except:
-            return False
-    
-    def buy_crypto():
+            return next((data for data in market_data if data["market"] == crypto_id), None)
+        except Exception as e:
+            raise Exception(f"Failed to fetch crypto detail: {e}")
+
+    def buy_crypto(self, request):
         """가상화폐 매수"""
-        try:
-            return True
-        except:
-            return False
+        if request.method == "POST":
+            try:
+                data = json.loads(request.body)
+                user_id = request.session.get("user_id")
+                crypto_id = data.get("crypto_id")
+                quantity = Decimal(data.get("quantity"))
+                market_price = Decimal(data.get("market_price"))
+                total_price = Decimal(data.get("total_price"))
+
+                if not user_id:
+                    return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+                if not crypto_id or not quantity or not market_price or not total_price:
+                    return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
+
+                # 사용자 및 가상화폐 검증
+                user = UserInfo.objects.filter(user_id=user_id).first()
+                if not user:
+                    return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
+
+                crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+                if not crypto:
+                    return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
+
+                # 잔액 확인
+                if user.virtual_account.balance < total_price:
+                    return JsonResponse({"success": False, "message": "보유금액이 부족합니다."}, status=400)
+
+                # 주문 처리
+                order = OrderInfo.objects.create(
+                    user=user,
+                    crypto=crypto,
+                    order_type="BUY",
+                    order_price=market_price,
+                    order_quantity=quantity,
+                    total_amount=total_price,
+                )
+
+                # 포트폴리오 업데이트
+                portfolio, created = InvestmentPortfolio.objects.get_or_create(
+                    user=user,
+                    crypto=crypto,
+                    defaults={
+                        "portfolio_id": f"{crypto.crypto_type}{user.user_id}",
+                        "total_quantity": quantity,
+                        "avg_buy_price": market_price,
+                        "total_investment": total_price,
+                        "first_buy_date": order.executed_time,
+                    },
+                )
+                if not created:
+                    total_quantity = portfolio.total_quantity + quantity
+                    total_investment = portfolio.total_investment + total_price
+                    portfolio.total_quantity = total_quantity
+                    portfolio.avg_buy_price = total_investment / total_quantity
+                    portfolio.total_investment = total_investment
+                    portfolio.save()
+
+                # 잔액 차감
+                user.virtual_account.balance -= total_price
+                user.virtual_account.save()
+
+                return JsonResponse({"success": True, "message": "가상화폐 매수 주문 완료."})
+            except Exception as e:
+                return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
+
+    def sell_crypto(self, request):
+        """가상화폐 매도"""
+        if request.method == "POST":
+            try:
+                data = json.loads(request.body)
+                user_id = request.session.get("user_id")
+                crypto_id = data.get("crypto_id")
+                quantity = Decimal(data.get("quantity"))
+                market_price = Decimal(data.get("market_price"))
+                total_price = Decimal(data.get("total_price"))
+
+                if not user_id:
+                    return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
+                if not crypto_id or not quantity or not market_price or not total_price:
+                    return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
+
+                # 사용자 및 포트폴리오 검증
+                user = UserInfo.objects.filter(user_id=user_id).first()
+                if not user:
+                    return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
+
+                crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
+                if not crypto:
+                    return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
+
+                portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
+                if not portfolio or portfolio.total_quantity < quantity:
+                    return JsonResponse({"success": False, "message": "보유한 가상화폐가 부족합니다."}, status=400)
+
+                # 주문 처리
+                order = OrderInfo.objects.create(
+                    user=user,
+                    crypto=crypto,
+                    order_type="SELL",
+                    order_price=market_price,
+                    order_quantity=quantity,
+                    total_amount=total_price,
+                )
+
+                # 포트폴리오 업데이트
+                portfolio.total_quantity -= quantity
+                if portfolio.total_quantity == 0:
+                    portfolio.delete()
+                else:
+                    portfolio.total_investment -= quantity * market_price
+                    portfolio.save()
+
+                # 잔액 추가
+                user.virtual_account.balance += total_price
+                user.virtual_account.save()
+
+                return JsonResponse({"success": True, "message": "가상화폐 매도 완료."})
+            except Exception as e:
+                return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
+
 
 def cryptolist_view(request):
     """
     가상화폐 목록 및 가격 조회
     """
-    crypto = cryptocurrency()
 
     try:
         try:
@@ -1125,18 +1236,18 @@ def buy_crypto(request):
             total_price = data.get("total_price")
 
             if not user_id:
-                return JsonResponse({"success": False, "message": "User is not logged in."}, status=403)
+                return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
             if not crypto_id or not quantity or not market_price or not total_price:
-                return JsonResponse({"success": False, "message": "Invalid input data."}, status=400)
+                return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
 
             # 모델 객체 가져오기
             user = UserInfo.objects.filter(user_id=user_id).first()
             if not user:
-                return JsonResponse({"success": False, "message": "User not found."}, status=404)
+                return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
 
             crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
             if not crypto:
-                return JsonResponse({"success": False, "message": "Crypto not found."}, status=404)
+                return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
 
             # Decimal 변환
             quantity = Decimal(quantity)
@@ -1145,7 +1256,7 @@ def buy_crypto(request):
 
             # 잔액 확인
             if user.virtual_account.balance < total_price:
-                return JsonResponse({"success": False, "message": "Insufficient balance."}, status=400)
+                return JsonResponse({"success": False, "message": "보유금액이 부족합니다."}, status=400)
 
             # 주문 내역 추가
             order = OrderInfo.objects.create(
@@ -1183,7 +1294,7 @@ def buy_crypto(request):
             user.virtual_account.balance -= total_price
             user.virtual_account.save()
 
-            return JsonResponse({"success": True, "message": "Purchase completed successfully."})
+            return JsonResponse({"success": True, "message": "가상화폐 매수 주문 완료."})
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)}, status=500)
     return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
@@ -1203,18 +1314,18 @@ def sell_crypto(request):
             total_price = data.get("total_price")
 
             if not user_id:
-                return JsonResponse({"success": False, "message": "User is not logged in."}, status=403)
+                return JsonResponse({"success": False, "message": "로그인 상태가 아닙니다."}, status=403)
             if not crypto_id or not quantity or not market_price or not total_price:
-                return JsonResponse({"success": False, "message": "Invalid input data."}, status=400)
+                return JsonResponse({"success": False, "message": "올바르지 않은 입력값입니다."}, status=400)
 
             # 모델 객체 가져오기
             user = UserInfo.objects.filter(user_id=user_id).first()
             if not user:
-                return JsonResponse({"success": False, "message": "User not found."}, status=404)
+                return JsonResponse({"success": False, "message": "사용자를 찾을 수 없습니다."}, status=404)
 
             crypto = CryptoInfo.objects.filter(crypto_id=crypto_id).first()
             if not crypto:
-                return JsonResponse({"success": False, "message": "Crypto not found."}, status=404)
+                return JsonResponse({"success": False, "message": "알 수 없는 가상화폐입니다."}, status=404)
 
             # Decimal 변환
             quantity = Decimal(quantity)
@@ -1224,7 +1335,7 @@ def sell_crypto(request):
             # 투자 포트폴리오 확인
             portfolio = InvestmentPortfolio.objects.filter(user=user, crypto=crypto).first()
             if not portfolio or portfolio.total_quantity < quantity:
-                return JsonResponse({"success": False, "message": "Insufficient crypto quantity."}, status=400)
+                return JsonResponse({"success": False, "message": "보유한 가상화폐가 부족합니다."}, status=400)
 
             # 주문 내역 추가
             order = OrderInfo.objects.create(
