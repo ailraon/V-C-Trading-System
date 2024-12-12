@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +22,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-&ccqz6d@!hogh76b7=_=x)s9z(n8(&so_=bq3ee^*@d=rj8fvi'
+# SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&ccqz6d@!hogh76b7=_=x)s9z(n8(&so_=bq3ee^*@d=rj8fvi')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# DEBUG = True
 
-ALLOWED_HOSTS = ['vnc-trading-system.com', 'goog-sc-vnc-trading-system-448@lunar-shift-442412-a4.iam.gserviceaccount.com']
-
+# ALLOWED_HOSTS = ['https://trading-system-862908053898.asia-northeast3.run.app']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -78,14 +81,24 @@ WSGI_APPLICATION = 'VCTradingSystem.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'VCDatabase',               # 데이터베이스 이름
+#         'USER': 'root',                     # MySQL 사용자 이름
+#         'PASSWORD': '1234',                 # MySQL 비밀번호
+#         'HOST': '127.0.0.1',                # 로컬 주소
+#         'PORT': '3307',                     # MySQL 기본 포트
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'VCDatabase',               # 데이터베이스 이름
-        'USER': 'root',                     # MySQL 사용자 이름
-        'PASSWORD': '1234',                 # MySQL 비밀번호
-        'HOST': '127.0.0.1',                # 로컬 주소
-        'PORT': '3307',                     # MySQL 기본 포트
+        'HOST': '/cloudsql/lunar-shift-442412-a4:asia-northeast3:vc-trading-system',
+        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
     }
 }
 
@@ -124,10 +137,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = '/static/'
+
+# STATIC_URL = '/static/'
+STATIC_URL = 'https://storage.googleapis.com/vc-trading-system/'
+
+# 정적 파일을 모아 저장할 디렉토리
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 추가할 정적 파일 디렉토리 설정
-STATICFILES_DIRS = [BASE_DIR / 'VCTrading/static']  # 여기에 추가
+# STATICFILES_DIRS = [BASE_DIR / 'VCTrading/static']  # 여기에 추가
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -138,3 +156,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'  # accounts/login/ 대신 login/을 사용하도록 설정
 LOGIN_REDIRECT_URL = 'dashboard'  # 로그인 성공 후 리다이렉트될 URL
 LOGOUT_REDIRECT_URL = 'login'  # 로그아웃 후 리다이렉트될 URL
+
+CSRF_TRUSTED_ORIGINS = ['https://trading-system-862908053898.asia-northeast3.run.app']  
