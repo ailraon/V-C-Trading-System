@@ -58,6 +58,7 @@
 17. **최종 프로젝트 종료보고서(PCR) 작성**
     - 진행 기간: **2024.12.11 ~ 2024.12.14**
 
+----
 
 ### 👥 2. 팀 구성
 | Name | Position |
@@ -65,6 +66,8 @@
 | 김민욱 | 착수, 계획, 분석 팀장 |
 | 이성균 | 시험, 종료 팀장 |
 | 정형일 | 설계, 구현 팀장 |
+
+----
 
 ### 🛠️ 3. 기술 스택
 | **Category**        | **Technology**               |
@@ -79,14 +82,14 @@
 | API Integration     | Cryptocurrency APIs (Upbit)  |
 
 ### 📊 4. 시스템 구조
-Frontend (HTML, JS, CSS) 
-↕ 
-Backend (Django Framework) 
-↕ 
-Database (MySQL via Google Cloud SQL) 
-↕ 
-Cloud (Google Cloud Run & Google Cloud Storage)
-
+- Frontend (HTML, JS, CSS) 
+- ↕ 
+- Backend (Django Framework) 
+- ↕ 
+- Database (MySQL via Google Cloud SQL) 
+- ↕ 
+- Cloud (Google Cloud Run & Google Cloud Storage)
+----
 ### 🔍 5. 주요 기능
 1. **실시간 가상화폐 거래**
    - 실시간 시장 데이터를 확인하고 매수/매도를 간편하게 실행할 수 있습니다.
@@ -109,10 +112,12 @@ Cloud (Google Cloud Run & Google Cloud Storage)
 5. **확장 가능한 배포**
    - **Docker**를 통해 컨테이너화되어 **Google Cloud Run**에 배포.
    - 정적 파일은 **Google Cloud Storage**를 통해 제공.
+----
 
 ### Live Demo
 - live site : https://trading-system-862908053898.asia-northeast3.run.app
 
+----
 
 ## 📑 기능 설명
 
