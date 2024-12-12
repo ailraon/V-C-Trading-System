@@ -1221,8 +1221,12 @@ def cryptolist_view(request):
     """
     가상화폐 목록 및 가격 조회
     """
-
     try:
+        trading_system = VCTradingSystem()
+        user_id = request.session.get('user_id')
+        user = trading_system.get_user_info(user_id)
+        if not user:
+            return redirect('login')
         try:
             market_data = get_krw_markets_with_prices_and_change()
         except Exception as e:
