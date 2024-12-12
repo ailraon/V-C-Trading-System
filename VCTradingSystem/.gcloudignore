@@ -1,0 +1,22 @@
+# Python 캐시 파일 및 디렉토리 제외
+__pycache__/
+*.py[cod]
+
+# 환경 설정 파일 제외
+*.env
+.env
+
+# 버전 관리 도구 관련 디렉토리 제외
+.git/
+.gitignore
+
+# 빌드 관련 디렉토리 및 파일 제외
+build/
+dist/
+*.egg-info/
+
+# 정적 파일 제외 (Cloud Storage 사용 시)
+static/
+
+# 미디어 파일 제외 (Cloud Storage 사용 시)
+media/
